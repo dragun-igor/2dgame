@@ -311,7 +311,6 @@ func (g *Game) Update() error {
 	} else {
 		u.Stop()
 	}
-	u.lastFrame = (statusFrames[u.status].framesNumber - 1) * statusFrames[u.status].frameDuration
 
 	switch {
 	case u.isDead:
@@ -322,28 +321,8 @@ func (g *Game) Update() error {
 		}
 	case u.isJumping:
 		u.status = statusJump
-		u.y += u.speedJump
-		u.speedJump -= u.decelerationJump
-		if u.y <= 0 {
-			u.y = 0
-			u.speedJump = u.baseSpeedJump
-			u.isJumping = false
-		}
 	case u.isRunning:
-		switch u.direction {
-		case directionLeft:
-			u.side = -1.0
-		case directionRight:
-			u.side = 1.0
-		}
 		u.status = statusRun
-		u.x += u.speedRun * u.side
-		if u.speedRun < u.maxSpeedRun {
-			u.speedRun += u.accelerationRun
-		} else {
-			u.speedRun = u.maxSpeedRun
-		}
-		u.speedRun += u.accelerationRun
 		if u.frame == u.lastFrame {
 			u.frame = 0
 		}
@@ -353,6 +332,35 @@ func (g *Game) Update() error {
 			u.frame = 0
 		}
 	}
+
+	if !u.isDead {
+		if u.isJumping {
+			u.y += u.speedJump
+			u.speedJump -= u.decelerationJump
+			if u.y <= 0 {
+				u.speedJump = u.baseSpeedJump
+				u.y = 0
+				u.isJumping = false
+			}
+		}
+		if u.isRunning {
+			switch u.direction {
+			case directionLeft:
+				u.side = -1.0
+			case directionRight:
+				u.side = 1.0
+			}
+			u.x += u.speedRun * u.side
+			if u.speedRun < u.maxSpeedRun {
+				u.speedRun += u.accelerationRun
+			} else {
+				u.speedRun = u.maxSpeedRun
+			}
+			u.speedRun += u.accelerationRun
+		}
+	}
+
+	u.lastFrame = (statusFrames[u.status].framesNumber - 1) * statusFrames[u.status].frameDuration
 	if u.frame < u.lastFrame {
 		u.frame++
 	}
