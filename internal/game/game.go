@@ -1,7 +1,6 @@
 package game
 
 import (
-	"fmt"
 	"image"
 	"image/png"
 	"os"
@@ -121,8 +120,14 @@ const (
 	attackType3
 )
 
+const (
+	directionLeft uint8 = iota + 1
+	directionRight
+)
+
 type Unit struct {
 	status           string
+	prevStatus       string
 	x                float64
 	y                float64
 	side             float64
@@ -135,12 +140,18 @@ type Unit struct {
 	accelerationRun  float64
 	health           int
 	stamina          int
+	direction        uint8
 	speedJump        float64
 	baseSpeedJump    float64
 	decelerationJump float64
+	isDead           bool
+	isHurted         bool
 	isAttacking      bool
-	isRunning        bool
+	isBlocking       bool
 	isJumping        bool
+	isRolling        bool
+	isRunning        bool
+	priority         int
 }
 
 func GetFrames() (map[string][]Frame, error) {
@@ -227,6 +238,7 @@ func NewUnit() *Unit {
 		speedJump:        baseSpeedJump,
 		baseSpeedJump:    baseSpeedJump,
 		decelerationJump: 0.2,
+		direction:        directionRight,
 	}
 }
 
@@ -238,62 +250,15 @@ func NewGame() (*Game, error) {
 	}, err
 }
 
-func (u *Unit) RestoreStamina() {
-	if u.stamina < 100 && u.status == statusIdle {
-		u.stamina++
-	}
-}
-
-func (u *Unit) WasteStamina(num int) {
-	if num >= u.stamina {
-		u.stamina = 0
-	} else {
-		u.stamina -= num
-	}
-}
-
-func (u *Unit) Idle() {
-	if !u.isAttacking && !u.isRunning && u.isJumping {
-		u.status = statusIdle
-	}
-}
-
-func (u *Unit) Hurt() {
-	u.status = statusHurt
-	u.frame = 0
-	u.health -= 20
-}
-
-func (u *Unit) Run() {
-	if !u.isAttacking {
-		u.status = statusRun
-	}
-	u.isRunning = true
-}
-
 func (u *Unit) Death() {
-	u.status = statusDeath
-	u.frame = 0
-}
-
-func (u *Unit) Roll() {
-	u.status = statusRoll
-	u.frame = 0
-}
-
-func (u *Unit) Jump() {
-	u.status = statusJump
-	u.frame = 0
-	u.isJumping = true
-}
-
-func (u *Unit) Block() {
-	u.status = statusBlockIdle
-	u.frame = 0
+	if u.health <= 0 {
+		u.isDead = true
+	}
 }
 
 func (u *Unit) Attack() {
 	if !u.isAttacking {
+		u.isAttacking = true
 		switch u.attackType {
 		case attackType1:
 			u.status = statusAttack1
@@ -305,158 +270,96 @@ func (u *Unit) Attack() {
 			u.status = statusAttack3
 			u.attackType = attackType1
 		}
-		u.frame = 0
-		u.isAttacking = true
 	}
 }
 
-// func (u *Unit) StatusSwitch(framesDrop int) {
-// 	u.lastFrame = statusFrames[u.status].frameDuration * (statusFrames[u.status].framesNumber - 1)
-// 	switch u.status {
-// 	case statusHurt:
-// 		if u.frame >= statusFrames[statusHurt].frameDuration*2 {
-// 			u.status = statusIdle
-// 			u.frame = 0
-// 		}
-// 	case statusJump:
-// 		u.y += u.speedJump
-// 		u.speedJump -= u.decelerationJump
-// 		if u.frame == u.lastFrame && u.y <= 0 {
-// 			u.y = 0
-// 			u.status = statusIdle
-// 			u.speedJump = u.baseSpeedJump
-// 		}
-
-// 	case statusAttack1, statusAttack2:
-// 		u.x += 0.1 * u.side
-// 		if u.frame >= 5*statusFrames[statusAttack1].frameDuration {
-// 			u.status = statusIdle
-// 			u.frame = 0
-// 		}
-// 	case statusAttack3:
-// 		u.x += 0.1 * u.side
-// 		if u.frame >= 7*statusFrames[statusAttack3].frameDuration {
-// 			u.status = statusIdle
-// 			u.frame = 0
-// 		}
-// 	case statusIdle, statusBlockIdle:
-// 		if u.frame >= 7*statusFrames[statusIdle].frameDuration {
-// 			u.frame = 0
-// 		}
-// 	case statusRoll:
-// 		u.x += 3.0 * u.side
-// 		if u.frame >= 8*statusFrames[statusRoll].frameDuration {
-// 			u.status = statusIdle
-// 			u.frame = 0
-// 		}
-// 	case statusRun:
-// 		if u.frame >= 9*statusFrames[statusRun].frameDuration {
-// 			u.frame = 0
-// 		}
-// 	case statusDeath:
-// 		if u.frame >= 9*statusFrames[statusDeath].frameDuration {
-// 			// flag = true
-// 		}
-// 	}
-// 	if u.frame < u.lastFrame {
-// 		u.frame++
-// 	}
-// }
-
-func (u *Unit) StatusSwitch() {
-	u.lastFrame = statusFrames[u.status].frameDuration * (statusFrames[u.status].framesNumber - 1)
-
-	if u.isAttacking && u.frame >= u.lastFrame {
-		u.frame = 0
-		u.isAttacking = false
+func (u *Unit) Jump() {
+	if !u.isJumping {
+		u.isJumping = true
 	}
-	if (u.isRunning && !u.isAttacking) || (u.isRunning && u.isAttacking && u.isJumping) {
-		u.x += u.speedRun * u.side
-		if u.speedRun <= u.maxSpeedRun {
-			u.speedRun += u.accelerationRun
-		} else {
-			u.speedRun = u.maxSpeedRun
-		}
-		if u.status == statusRun && u.frame >= u.lastFrame {
-			u.frame = 0
-		}
+}
+
+func (u *Unit) Run() {
+	u.isRunning = true
+}
+
+func (u *Unit) Stop() {
+	u.isRunning = false
+	u.speedRun = u.baseSpeedRun
+}
+
+func (g *Game) Update() error {
+	u := g.unit
+	u.Death()
+	if inpututil.IsKeyJustPressed(ebiten.KeyR) {
+		u.health = 0
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyE) {
+		u.Attack()
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+		u.Jump()
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyA) {
+		u.direction = directionLeft
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyD) {
+		u.direction = directionRight
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyA) || ebiten.IsKeyPressed(ebiten.KeyD) {
+		u.Run()
 	} else {
-		u.speedRun = u.baseSpeedRun
+		u.Stop()
 	}
-	if u.isJumping {
+	u.lastFrame = (statusFrames[u.status].framesNumber - 1) * statusFrames[u.status].frameDuration
+
+	switch {
+	case u.isDead:
+		u.status = statusDeath
+	case u.isAttacking:
+		if u.frame == u.lastFrame {
+			u.isAttacking = false
+		}
+	case u.isJumping:
+		u.status = statusJump
 		u.y += u.speedJump
 		u.speedJump -= u.decelerationJump
 		if u.y <= 0 {
 			u.y = 0
+			u.speedJump = u.baseSpeedJump
 			u.isJumping = false
 		}
-	} else {
-		u.speedJump = u.baseSpeedJump
-	}
-
-	if u.isAttacking && u.frame >= u.lastFrame {
-		u.frame = 0
-		u.isAttacking = false
-	}
-	if !u.isAttacking && !u.isJumping && !u.isRunning {
-		if u.frame >= u.lastFrame {
+	case u.isRunning:
+		switch u.direction {
+		case directionLeft:
+			u.side = -1.0
+		case directionRight:
+			u.side = 1.0
+		}
+		u.status = statusRun
+		u.x += u.speedRun * u.side
+		if u.speedRun < u.maxSpeedRun {
+			u.speedRun += u.accelerationRun
+		} else {
+			u.speedRun = u.maxSpeedRun
+		}
+		u.speedRun += u.accelerationRun
+		if u.frame == u.lastFrame {
+			u.frame = 0
+		}
+	default:
+		u.status = statusIdle
+		if u.frame == u.lastFrame {
 			u.frame = 0
 		}
 	}
 	if u.frame < u.lastFrame {
 		u.frame++
 	}
-}
-
-func (g *Game) Update() error {
-	if g.unit.health > 0 {
-		if inpututil.IsKeyJustPressed(ebiten.KeyA) {
-			g.unit.side = -1.0
-		}
-		if inpututil.IsKeyJustPressed(ebiten.KeyD) {
-			g.unit.side = 1.0
-		}
-		g.unit.isRunning = ebiten.IsKeyPressed(ebiten.KeyA) || ebiten.IsKeyPressed(ebiten.KeyD)
-		if inpututil.IsKeyJustPressed(ebiten.KeySpace) && !g.unit.isJumping && !g.unit.isAttacking {
-			g.unit.frame = 0
-			g.unit.isJumping = true
-		}
-		if inpututil.IsKeyJustPressed(ebiten.KeyE) && !g.unit.isAttacking {
-			g.unit.frame = 0
-			g.unit.isAttacking = true
-			switch g.unit.attackType {
-			case attackType1:
-				g.unit.attackType = attackType2
-			case attackType2:
-				g.unit.attackType = attackType3
-			case attackType3:
-				g.unit.attackType = attackType1
-			}
-		}
-		switch {
-		case g.unit.isAttacking:
-			switch g.unit.attackType {
-			case attackType1:
-				g.unit.status = statusAttack1
-			case attackType2:
-				g.unit.status = statusAttack2
-			case attackType3:
-				g.unit.status = statusAttack3
-			default:
-				g.unit.status = statusAttack1
-			}
-		case g.unit.isJumping:
-			g.unit.status = statusJump
-		case g.unit.isRunning:
-			g.unit.status = statusRun
-		default:
-			g.unit.status = statusIdle
-		}
-	} else {
-		g.unit.Death()
+	if u.status != u.prevStatus {
+		u.frame = 0
 	}
-	g.unit.StatusSwitch()
-	// g.unit.RestoreStamina()
+	u.prevStatus = u.status
 	return nil
 }
 
@@ -465,11 +368,6 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println(*g.unit)
-		}
-	}()
 	tileSize := 32
 	for i := 0; i < 50; i++ {
 		op := &ebiten.DrawImageOptions{}
