@@ -131,19 +131,20 @@ type Unit struct {
 	x                float64
 	y                float64
 	side             float64
-	frame            int
-	lastFrame        int
-	attackType       atype
 	speedRun         float64
 	maxSpeedRun      float64
 	baseSpeedRun     float64
 	accelerationRun  float64
-	health           int
-	stamina          int
-	direction        uint8
 	speedJump        float64
 	baseSpeedJump    float64
 	decelerationJump float64
+	speedRoll        float64
+	frame            int
+	lastFrame        int
+	health           int
+	stamina          int
+	attackType       atype
+	direction        uint8
 	isDead           bool
 	isHurted         bool
 	isAttacking      bool
@@ -151,7 +152,6 @@ type Unit struct {
 	isJumping        bool
 	isRolling        bool
 	isRunning        bool
-	priority         int
 }
 
 func GetFrames() (map[string][]Frame, error) {
@@ -164,7 +164,7 @@ func GetFrames() (map[string][]Frame, error) {
 		framesNumber := statusFrames[status].framesNumber
 		frms := make([]Frame, 0, framesNumber)
 		for i := 0; i < framesNumber; i++ {
-			file, err = os.Open("_assets/" + status + "/HeroKnight_" + status + "_" + strconv.Itoa(i) + ".png")
+			file, err = os.Open("_assets/HeroKnight/" + status + "/HeroKnight_" + status + "_" + strconv.Itoa(i) + ".png")
 			if err != nil {
 				break
 			}
@@ -173,7 +173,7 @@ func GetFrames() (map[string][]Frame, error) {
 				break
 			}
 			file.Close()
-			file, err = os.Open("_assets/" + status + "/HeroKnight_" + status + "_" + strconv.Itoa(i) + ".png")
+			file, err = os.Open("_assets/HeroKnight/" + status + "/HeroKnight_" + status + "_" + strconv.Itoa(i) + ".png")
 			if err != nil {
 				break
 			}
@@ -239,6 +239,7 @@ func NewUnit() *Unit {
 		baseSpeedJump:    baseSpeedJump,
 		decelerationJump: 0.2,
 		direction:        directionRight,
+		speedRoll:        5.0,
 	}
 }
 
@@ -257,25 +258,28 @@ func (u *Unit) Death() {
 }
 
 func (u *Unit) Attack() {
-	if !u.isAttacking {
+	if !u.isAttacking && !u.isRolling {
 		u.isAttacking = true
 		switch u.attackType {
 		case attackType1:
-			u.status = statusAttack1
 			u.attackType = attackType2
 		case attackType2:
-			u.status = statusAttack2
 			u.attackType = attackType3
 		case attackType3:
-			u.status = statusAttack3
 			u.attackType = attackType1
 		}
 	}
 }
 
 func (u *Unit) Jump() {
-	if !u.isJumping {
+	if !u.isJumping && !u.isRolling && !u.isAttacking {
 		u.isJumping = true
+	}
+}
+
+func (u *Unit) Roll() {
+	if !u.isRolling && !u.isAttacking && !u.isJumping {
+		u.isRolling = true
 	}
 }
 
@@ -285,7 +289,6 @@ func (u *Unit) Run() {
 
 func (u *Unit) Stop() {
 	u.isRunning = false
-	u.speedRun = u.baseSpeedRun
 }
 
 func (g *Game) Update() error {
@@ -299,6 +302,9 @@ func (g *Game) Update() error {
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
 		u.Jump()
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyControlLeft) {
+		u.Roll()
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyA) {
 		u.direction = directionLeft
@@ -316,9 +322,16 @@ func (g *Game) Update() error {
 	case u.isDead:
 		u.status = statusDeath
 	case u.isAttacking:
-		if u.frame == u.lastFrame {
-			u.isAttacking = false
+		switch u.attackType {
+		case attackType1:
+			u.status = statusAttack1
+		case attackType2:
+			u.status = statusAttack2
+		case attackType3:
+			u.status = statusAttack3
 		}
+	case u.isRolling:
+		u.status = statusRoll
 	case u.isJumping:
 		u.status = statusJump
 	case u.isRunning:
@@ -333,40 +346,57 @@ func (g *Game) Update() error {
 		}
 	}
 
-	if !u.isDead {
-		if u.isJumping {
-			u.y += u.speedJump
-			u.speedJump -= u.decelerationJump
-			if u.y <= 0 {
-				u.speedJump = u.baseSpeedJump
-				u.y = 0
-				u.isJumping = false
-			}
-		}
-		if u.isRunning {
-			switch u.direction {
-			case directionLeft:
-				u.side = -1.0
-			case directionRight:
-				u.side = 1.0
-			}
-			u.x += u.speedRun * u.side
-			if u.speedRun < u.maxSpeedRun {
-				u.speedRun += u.accelerationRun
-			} else {
-				u.speedRun = u.maxSpeedRun
-			}
-			u.speedRun += u.accelerationRun
+	if (u.isJumping && !u.isDead) || (u.isDead && u.y > 0) {
+		u.y += u.speedJump
+		u.speedJump -= u.decelerationJump
+		if u.y <= 0 {
+			u.speedJump = u.baseSpeedJump
+			u.y = 0
+			u.isJumping = false
 		}
 	}
 
-	u.lastFrame = (statusFrames[u.status].framesNumber - 1) * statusFrames[u.status].frameDuration
-	if u.frame < u.lastFrame {
+	if u.isRolling {
+		u.x += u.speedRoll * u.side
+	}
+
+	if u.isRunning && !u.isDead && !u.isAttacking && !u.isRolling {
+		switch u.direction {
+		case directionLeft:
+			u.side = -1.0
+		case directionRight:
+			u.side = 1.0
+		}
+		u.x += u.speedRun * u.side
+		if u.speedRun < u.maxSpeedRun {
+			u.speedRun += u.accelerationRun
+		} else {
+			u.speedRun = u.maxSpeedRun
+		}
+		u.speedRun += u.accelerationRun
+	} else {
+		u.speedRun = u.baseSpeedRun
+	}
+
+	switch {
+	case u.status != u.prevStatus:
+		u.lastFrame = (statusFrames[u.status].framesNumber - 1) * statusFrames[u.status].frameDuration
+		u.frame = 0
+	case u.frame < u.lastFrame:
 		u.frame++
 	}
-	if u.status != u.prevStatus {
-		u.frame = 0
+
+	if u.frame == u.lastFrame {
+		if u.isAttacking {
+			u.frame = 0
+			u.isAttacking = false
+		}
+		if u.isRolling {
+			u.frame = 0
+			u.isRolling = false
+		}
 	}
+
 	u.prevStatus = u.status
 	return nil
 }
