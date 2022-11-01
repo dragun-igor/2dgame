@@ -38,7 +38,7 @@ type LightBandit struct {
 }
 
 func NewLightBandit() *LightBandit {
-	Frames, _ := GetFrames()
+	Frames, _ := GetFramesLightBandit()
 	return &LightBandit{
 		Frames:           Frames,
 		X:                550,
@@ -54,7 +54,7 @@ func NewLightBandit() *LightBandit {
 		BaseSpeedJump:    6.0,
 		DecelerationJump: 0.2,
 		Health:           100,
-		LastFrame:        (StatusFrames[StatusCombatIdle].FramesNumber - 1) * StatusFrames[StatusCombatIdle].FrameDuration,
+		LastFrame:        StatusFramesLightBandit[StatusCombatIdle].FramesNumber*StatusFramesLightBandit[StatusCombatIdle].FrameDuration - 1,
 		Direction:        DirectionLeft,
 	}
 }
@@ -64,12 +64,12 @@ func GetFramesLightBandit() (map[string][]Frame, error) {
 	var img image.Image
 	var cfg image.Config
 	var err error
-	Frames := map[string][]Frame{}
-	for Status := range StatusFrames {
-		FramesNumber := StatusFrames[Status].FramesNumber
-		frms := make([]Frame, 0, FramesNumber)
-		for i := 0; i < FramesNumber; i++ {
-			file, err = os.Open("_assets/LightBandit/" + Status + "/LightBandit_" + Status + "_" + strconv.Itoa(i) + ".png")
+	frames := map[string][]Frame{}
+	for status := range StatusFramesLightBandit {
+		framesNumber := StatusFramesLightBandit[status].FramesNumber
+		frms := make([]Frame, 0, framesNumber)
+		for i := 0; i < framesNumber; i++ {
+			file, err = os.Open("_assets/LightBandit/" + status + "/LightBandit_" + status + "_" + strconv.Itoa(i) + ".png")
 			if err != nil {
 				break
 			}
@@ -78,7 +78,7 @@ func GetFramesLightBandit() (map[string][]Frame, error) {
 				break
 			}
 			file.Close()
-			file, err = os.Open("_assets/LightBandit/" + Status + "/LightBandit_" + Status + "_" + strconv.Itoa(i) + ".png")
+			file, err = os.Open("_assets/LightBandit/" + status + "/LightBandit_" + status + "_" + strconv.Itoa(i) + ".png")
 			if err != nil {
 				break
 			}
@@ -93,9 +93,9 @@ func GetFramesLightBandit() (map[string][]Frame, error) {
 				Height: float64(cfg.Height),
 			})
 		}
-		Frames[Status] = frms
+		frames[status] = frms
 	}
-	return Frames, err
+	return frames, err
 }
 
 func (lb *LightBandit) Death() {
@@ -107,7 +107,7 @@ func (lb *LightBandit) Death() {
 func (lb *LightBandit) Hurt() {
 	if !lb.IsHurted {
 		lb.IsHurted = true
-		lb.Health -= 2
+		lb.Health -= 10
 	}
 }
 
@@ -130,7 +130,7 @@ func (lb *LightBandit) Update() error {
 
 	switch {
 	case lb.Status != lb.PrevStatus:
-		lb.LastFrame = StatusFrames[lb.Status].FramesNumber*StatusFrames[lb.Status].FrameDuration - 1
+		lb.LastFrame = StatusFramesLightBandit[lb.Status].FramesNumber*StatusFramesLightBandit[lb.Status].FrameDuration - 1
 		lb.Frame = 0
 	case lb.Frame < lb.LastFrame:
 		lb.Frame++
@@ -144,15 +144,16 @@ func (lb *LightBandit) Update() error {
 }
 
 func (lb *LightBandit) Draw(screen *ebiten.Image) {
-	tileSize := 32
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Scale(lb.Side, 1.0)
 	if lb.Side < 0 {
-		op.GeoM.Translate(lb.Frames[lb.Status][lb.Frame/StatusFrames[lb.Status].FrameDuration].Width, 0.0)
+		op.GeoM.Translate(lb.Frames[lb.Status][lb.Frame/StatusFramesLightBandit[lb.Status].FrameDuration].Width, 0.0)
 	}
-	op.GeoM.Translate(lb.X, float64(tileSize)*9-lb.Frames[lb.Status][lb.Frame/StatusFrames[lb.Status].FrameDuration].Height-lb.Y)
-	screen.DrawImage(lb.Frames[lb.Status][lb.Frame/StatusFrames[lb.Status].FrameDuration].Img, op)
-	w := lb.Frames[lb.Status][lb.Frame/StatusFrames[lb.Status].FrameDuration].Width
-	ebitenutil.DrawRect(screen, lb.X, float64(tileSize)*9-lb.Frames[lb.Status][lb.Frame/StatusFrames[lb.Status].FrameDuration].Height-lb.Y, w, lb.Frames[lb.Status][lb.Frame/StatusFrames[lb.Status].FrameDuration].Height, color.RGBA{0, 0, 255, 20})
-
+	op.GeoM.Translate(lb.X, float64(TileSize)*9-lb.Frames[lb.Status][lb.Frame/StatusFramesLightBandit[lb.Status].FrameDuration].Height-lb.Y)
+	screen.DrawImage(lb.Frames[lb.Status][lb.Frame/StatusFramesLightBandit[lb.Status].FrameDuration].Img, op)
+	w := lb.Frames[lb.Status][lb.Frame/StatusFramesLightBandit[lb.Status].FrameDuration].Width
+	if boxesShow {
+		ebitenutil.DrawRect(screen, lb.X, float64(TileSize)*9-lb.Frames[lb.Status][lb.Frame/StatusFramesLightBandit[lb.Status].FrameDuration].Height-lb.Y, w, lb.Frames[lb.Status][lb.Frame/StatusFramesLightBandit[lb.Status].FrameDuration].Height, color.RGBA{0, 0, 255, 100})
+		ebitenutil.DrawRect(screen, lb.X+12, float64(TileSize)*9-lb.Frames[lb.Status][lb.Frame/StatusFramesLightBandit[lb.Status].FrameDuration].Height-lb.Y, 26, lb.Frames[lb.Status][lb.Frame/StatusFramesLightBandit[lb.Status].FrameDuration].Height, color.RGBA{255, 0, 0, 100})
+	}
 }

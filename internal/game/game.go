@@ -2,12 +2,15 @@ package game
 
 import (
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
 type Game struct {
 	hk *HeroKnight
 	lb *LightBandit
 }
+
+var boxesShow bool
 
 func NewGame() *Game {
 	return &Game{
@@ -17,8 +20,16 @@ func NewGame() *Game {
 }
 
 func (g *Game) Update() error {
-	g.lb.Update()
-	g.hk.Update()
+	if inpututil.IsKeyJustPressed(ebiten.KeyB) {
+		boxesShow = !boxesShow
+	}
+	if !g.lb.IsDead {
+		g.lb.Update()
+	}
+	if !g.hk.IsDead || g.hk.Frame != g.hk.LastFrame {
+		g.hk.Update()
+	}
+
 	if g.hk.IsAttacking && g.hk.Frame == g.hk.LastFrame/2 {
 		if (g.hk.X+100 > g.lb.X+20 &&
 			g.hk.X+100 < g.lb.X+70 &&
@@ -29,6 +40,17 @@ func (g *Game) Update() error {
 			g.lb.Hurt()
 		}
 	}
+	if g.hk.IsRunning && !g.lb.IsDead {
+		if g.hk.Side > 0 {
+			if g.hk.X+63 > g.lb.X+12 && g.hk.X+40 < g.lb.X+38 {
+				g.hk.X = g.lb.X + 12 - 63
+			}
+		} else {
+			if g.hk.X+40 < g.lb.X+38 && g.hk.X+63 > g.lb.X+12 {
+				g.hk.X = g.lb.X + 38 - 40
+			}
+		}
+	}
 	return nil
 }
 
@@ -37,6 +59,6 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	g.hk.Draw(screen)
 	g.lb.Draw(screen)
+	g.hk.Draw(screen)
 }

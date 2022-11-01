@@ -42,17 +42,17 @@ type HeroKnight struct {
 	IsRunning        bool
 }
 
-func GetFrames() (map[string][]Frame, error) {
+func GetFramesHeroKnight() (map[string][]Frame, error) {
 	var file *os.File
 	var img image.Image
 	var cfg image.Config
 	var err error
-	Frames := map[string][]Frame{}
-	for Status := range StatusFrames {
-		FramesNumber := StatusFrames[Status].FramesNumber
-		frms := make([]Frame, 0, FramesNumber)
-		for i := 0; i < FramesNumber; i++ {
-			file, err = os.Open("_assets/HeroKnight/" + Status + "/HeroKnight_" + Status + "_" + strconv.Itoa(i) + ".png")
+	frames := map[string][]Frame{}
+	for status := range StatusFramesHeroKnight {
+		framesNumber := StatusFramesHeroKnight[status].FramesNumber
+		frms := make([]Frame, 0, framesNumber)
+		for i := 0; i < framesNumber; i++ {
+			file, err = os.Open("_assets/HeroKnight/" + status + "/HeroKnight_" + status + "_" + strconv.Itoa(i) + ".png")
 			if err != nil {
 				break
 			}
@@ -61,7 +61,7 @@ func GetFrames() (map[string][]Frame, error) {
 				break
 			}
 			file.Close()
-			file, err = os.Open("_assets/HeroKnight/" + Status + "/HeroKnight_" + Status + "_" + strconv.Itoa(i) + ".png")
+			file, err = os.Open("_assets/HeroKnight/" + status + "/HeroKnight_" + status + "_" + strconv.Itoa(i) + ".png")
 			if err != nil {
 				break
 			}
@@ -76,7 +76,7 @@ func GetFrames() (map[string][]Frame, error) {
 				Height: float64(cfg.Height),
 			})
 		}
-		Frames[Status] = frms
+		frames[status] = frms
 	}
 
 	frms := make([]Frame, 0, 4)
@@ -105,15 +105,15 @@ func GetFrames() (map[string][]Frame, error) {
 			Height: float64(cfg.Height),
 		})
 	}
-	Frames["environment"] = frms
+	frames["environment"] = frms
 
-	return Frames, err
+	return frames, err
 }
 
 func NewHeroKnight() *HeroKnight {
 	baseSpeedRun := 1.0
 	baseSpeedJump := 6.0
-	Frames, _ := GetFrames()
+	Frames, _ := GetFramesHeroKnight()
 	return &HeroKnight{
 		Frames:           Frames,
 		X:                50,
@@ -131,6 +131,7 @@ func NewHeroKnight() *HeroKnight {
 		DecelerationJump: 0.2,
 		Direction:        DirectionRight,
 		SpeedRoll:        5.0,
+		LastFrame:        StatusFramesHeroKnight[StatusIdle].FrameDuration * StatusFramesHeroKnight[StatusIdle].FramesNumber,
 	}
 }
 
@@ -262,7 +263,7 @@ func (hk *HeroKnight) Update() error {
 
 	switch {
 	case hk.Status != hk.PrevStatus:
-		hk.LastFrame = StatusFrames[hk.Status].FramesNumber*StatusFrames[hk.Status].FrameDuration - 1
+		hk.LastFrame = StatusFramesHeroKnight[hk.Status].FramesNumber*StatusFramesHeroKnight[hk.Status].FrameDuration - 1
 		hk.Frame = 0
 	case hk.Frame < hk.LastFrame:
 		hk.Frame++
@@ -284,20 +285,22 @@ func (hk *HeroKnight) Update() error {
 }
 
 func (hk *HeroKnight) Draw(screen *ebiten.Image) {
-	tileSize := 32
 	for i := 0; i < 20; i++ {
 		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Translate(float64(tileSize*i), float64(tileSize)*9)
+		op.GeoM.Translate(float64(TileSize*i), float64(TileSize)*9)
 		screen.DrawImage(hk.Frames["environment"][1].Img, op)
 	}
 
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Scale(hk.Side, 1.0)
 	if hk.Side < 0 {
-		op.GeoM.Translate(hk.Frames[hk.Status][hk.Frame/StatusFrames[hk.Status].FrameDuration].Width, 0.0)
+		op.GeoM.Translate(hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Width, 0.0)
 	}
-	op.GeoM.Translate(hk.X, float64(tileSize)*9-hk.Frames[hk.Status][hk.Frame/StatusFrames[hk.Status].FrameDuration].Height-hk.Y)
-	screen.DrawImage(hk.Frames[hk.Status][hk.Frame/StatusFrames[hk.Status].FrameDuration].Img, op)
-	w := hk.Frames[hk.Status][hk.Frame/StatusFrames[hk.Status].FrameDuration].Width - 35
-	ebitenutil.DrawRect(screen, hk.X, float64(tileSize)*9-hk.Frames[hk.Status][hk.Frame/StatusFrames[hk.Status].FrameDuration].Height-hk.Y, w, hk.Frames[hk.Status][hk.Frame/StatusFrames[hk.Status].FrameDuration].Height, color.RGBA{0, 0, 255, 20})
+	op.GeoM.Translate(hk.X, float64(TileSize)*9-hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Height-hk.Y)
+	screen.DrawImage(hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Img, op)
+	w := hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Width // - 35
+	if boxesShow {
+		ebitenutil.DrawRect(screen, hk.X, float64(TileSize)*9-hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Height-hk.Y, w, hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Height, color.RGBA{0, 0, 255, 100})
+		ebitenutil.DrawRect(screen, hk.X+40, float64(TileSize)*9-hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Height-hk.Y, 23, hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Height, color.RGBA{255, 0, 0, 100})
+	}
 }

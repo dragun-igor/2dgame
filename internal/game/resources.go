@@ -22,6 +22,8 @@ const (
 	StatusAttack        string = "Attack"
 	StatusCombatIdle    string = "CombatIdle"
 	StatusRecover       string = "Recover"
+
+	TileSize int = 32
 )
 
 type StatusData struct {
@@ -35,7 +37,7 @@ type Frame struct {
 	Height float64
 }
 
-var StatusFrames map[string]StatusData = map[string]StatusData{
+var StatusFramesHeroKnight map[string]StatusData = map[string]StatusData{
 	StatusAttack1: StatusData{
 		FramesNumber:  6,
 		FrameDuration: 4,
@@ -90,7 +92,7 @@ var StatusFrames map[string]StatusData = map[string]StatusData{
 	},
 	StatusRoll: StatusData{
 		FramesNumber:  9,
-		FrameDuration: 4,
+		FrameDuration: 2,
 	},
 	StatusRun: StatusData{
 		FramesNumber:  10,
