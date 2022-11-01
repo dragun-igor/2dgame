@@ -9,13 +9,10 @@ import (
 
 func main() {
 	ebiten.SetWindowTitle("Hero Knight")
-	screenWidth := 1600
-	screenHeight := 247
+	screenWidth := 640
+	screenHeight := 320
 	ebiten.SetWindowSize(screenWidth, screenHeight)
-	game, err := game.NewGame()
-	if err != nil {
-		log.Fatal(err)
-	}
+	game := game.NewGame()
 	if err := ebiten.RunGame(game); err != nil {
 		log.Fatal(err)
 	}
