@@ -1,20 +1,18 @@
 package game
 
 import (
-	"github.com/dragun-igor/hero_knight/internal/heroknight"
-	"github.com/dragun-igor/hero_knight/internal/lightbandit"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
 type Game struct {
-	hk *heroknight.HeroKnight
-	lb *lightbandit.LightBandit
+	hk *HeroKnight
+	lb *LightBandit
 }
 
 func NewGame() *Game {
 	return &Game{
-		hk: heroknight.NewHeroKnight(),
-		lb: lightbandit.NewLightBandit(),
+		hk: NewHeroKnight(),
+		lb: NewLightBandit(),
 	}
 }
 
