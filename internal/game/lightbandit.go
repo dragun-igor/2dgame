@@ -9,13 +9,14 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
 type LightBandit struct {
+	Keyboard         Keyboard
 	Frames           map[string][]Frame
 	Status           string
 	PrevStatus       string
+	Type             string
 	X                float64
 	Y                float64
 	Side             float64
@@ -38,8 +39,10 @@ type LightBandit struct {
 }
 
 func NewLightBandit() *LightBandit {
-	Frames, _ := GetFramesLightBandit()
+	Frames, _ := GetFramesLightBandit("LightBandit")
 	return &LightBandit{
+		Keyboard:         NewEmulationKeyboard(),
+		Type:             "LightBandit",
 		Frames:           Frames,
 		X:                550,
 		Y:                0,
@@ -59,7 +62,31 @@ func NewLightBandit() *LightBandit {
 	}
 }
 
-func GetFramesLightBandit() (map[string][]Frame, error) {
+func NewHeavyBandit() *LightBandit {
+	Frames, _ := GetFramesLightBandit("HeavyBandit")
+	return &LightBandit{
+		Keyboard:         NewEmulationKeyboard(),
+		Type:             "HeavyBandit",
+		Frames:           Frames,
+		X:                300,
+		Y:                0,
+		Status:           StatusCombatIdle,
+		PrevStatus:       StatusCombatIdle,
+		Side:             1.0,
+		SpeedRun:         1.0,
+		MaxSpeedRun:      2.0,
+		BaseSpeedRun:     1.0,
+		AccelerationRun:  0.2,
+		SpeedJump:        6.0,
+		BaseSpeedJump:    6.0,
+		DecelerationJump: 0.2,
+		Health:           100,
+		LastFrame:        StatusFramesLightBandit[StatusCombatIdle].FramesNumber*StatusFramesLightBandit[StatusCombatIdle].FrameDuration - 1,
+		Direction:        DirectionLeft,
+	}
+}
+
+func GetFramesLightBandit(strType string) (map[string][]Frame, error) {
 	var file *os.File
 	var img image.Image
 	var cfg image.Config
@@ -69,7 +96,7 @@ func GetFramesLightBandit() (map[string][]Frame, error) {
 		framesNumber := StatusFramesLightBandit[status].FramesNumber
 		frms := make([]Frame, 0, framesNumber)
 		for i := 0; i < framesNumber; i++ {
-			file, err = os.Open("_assets/LightBandit/" + status + "/LightBandit_" + status + "_" + strconv.Itoa(i) + ".png")
+			file, err = os.Open("_assets/" + strType + "/" + status + "/" + strType + "_" + status + "_" + strconv.Itoa(i) + ".png")
 			if err != nil {
 				break
 			}
@@ -78,7 +105,7 @@ func GetFramesLightBandit() (map[string][]Frame, error) {
 				break
 			}
 			file.Close()
-			file, err = os.Open("_assets/LightBandit/" + status + "/LightBandit_" + status + "_" + strconv.Itoa(i) + ".png")
+			file, err = os.Open("_assets/" + strType + "/" + status + "/" + strType + "_" + status + "_" + strconv.Itoa(i) + ".png")
 			if err != nil {
 				break
 			}
@@ -99,7 +126,7 @@ func GetFramesLightBandit() (map[string][]Frame, error) {
 }
 
 func (lb *LightBandit) Death() {
-	if !lb.IsDead {
+	if lb.Health <= 0 {
 		lb.IsDead = true
 	}
 }
@@ -111,21 +138,69 @@ func (lb *LightBandit) Hurt() {
 	}
 }
 
-func (lb *LightBandit) Update() error {
-	if lb.Health <= 0 {
-		lb.Death()
+func (hk *LightBandit) Attack() {
+	if !hk.IsAttacking && !hk.IsDead {
+		hk.IsAttacking = true
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyT) {
-		lb.Hurt()
-	}
+}
 
+func (lb *LightBandit) Run() {
+	lb.IsRunning = true
+}
+
+func (lb *LightBandit) Stop() {
+	lb.IsRunning = false
+}
+
+func (lb *LightBandit) Update(keyAttack, keyRunLeft, keyRunRight bool) error {
+	lb.Keyboard[KeyAttack].KeyEmulation = keyAttack
+	lb.Keyboard[KeyRunLeft].KeyEmulation = keyRunLeft
+	lb.Keyboard[KeyRunRight].KeyEmulation = keyRunRight
+	lb.Keyboard.Update()
+	lb.Death()
+	if lb.Keyboard[KeyAttack].IsKeyJustPressed {
+		lb.Attack()
+	}
+	if lb.Keyboard[KeyRunLeft].IsKeyPressed {
+		lb.Direction = DirectionLeft
+	}
+	if lb.Keyboard[KeyRunRight].IsKeyPressed {
+		lb.Direction = DirectionRight
+	}
+	if lb.Keyboard[KeyRunLeft].IsKeyPressed || lb.Keyboard[KeyRunRight].IsKeyPressed {
+		lb.Run()
+	} else {
+		lb.Stop()
+	}
 	switch {
 	case lb.IsDead:
 		lb.Status = StatusDeath
 	case lb.IsHurted:
 		lb.Status = StatusHurt
+	case lb.IsAttacking:
+		lb.Status = StatusAttack
+	case lb.IsRunning:
+		lb.Status = StatusRun
 	default:
 		lb.Status = StatusCombatIdle
+	}
+
+	if lb.IsRunning && !lb.IsDead && !lb.IsAttacking {
+		switch lb.Direction {
+		case DirectionLeft:
+			lb.Side = 1.0
+		case DirectionRight:
+			lb.Side = -1.0
+		}
+		lb.X += lb.SpeedRun * -lb.Side
+		if lb.SpeedRun < lb.MaxSpeedRun {
+			lb.SpeedRun += lb.AccelerationRun
+		} else {
+			lb.SpeedRun = lb.MaxSpeedRun
+		}
+		lb.SpeedRun += lb.AccelerationRun
+	} else {
+		lb.SpeedRun = lb.BaseSpeedRun
 	}
 
 	switch {
@@ -136,9 +211,11 @@ func (lb *LightBandit) Update() error {
 		lb.Frame++
 	}
 	if lb.Frame == lb.LastFrame {
+		lb.IsAttacking = false
 		lb.IsHurted = false
 		lb.Frame = 0
 	}
+
 	lb.PrevStatus = lb.Status
 	return nil
 }
@@ -150,10 +227,11 @@ func (lb *LightBandit) Draw(screen *ebiten.Image) {
 		op.GeoM.Translate(lb.Frames[lb.Status][lb.Frame/StatusFramesLightBandit[lb.Status].FrameDuration].Width, 0.0)
 	}
 	op.GeoM.Translate(lb.X, float64(TileSize)*9-lb.Frames[lb.Status][lb.Frame/StatusFramesLightBandit[lb.Status].FrameDuration].Height-lb.Y)
+	ebitenutil.DrawRect(screen, lb.X+(lb.Frames[lb.Status][lb.Frame/StatusFramesLightBandit[lb.Status].FrameDuration].Width-30)/2, float64(TileSize)*9-lb.Frames[lb.Status][lb.Frame/StatusFramesLightBandit[lb.Status].FrameDuration].Height-lb.Y-5, 30.0/100.0*float64(lb.Health), 5, color.RGBA{255, 0, 0, 255})
 	screen.DrawImage(lb.Frames[lb.Status][lb.Frame/StatusFramesLightBandit[lb.Status].FrameDuration].Img, op)
 	w := lb.Frames[lb.Status][lb.Frame/StatusFramesLightBandit[lb.Status].FrameDuration].Width
 	if boxesShow {
 		ebitenutil.DrawRect(screen, lb.X, float64(TileSize)*9-lb.Frames[lb.Status][lb.Frame/StatusFramesLightBandit[lb.Status].FrameDuration].Height-lb.Y, w, lb.Frames[lb.Status][lb.Frame/StatusFramesLightBandit[lb.Status].FrameDuration].Height, color.RGBA{0, 0, 255, 100})
-		ebitenutil.DrawRect(screen, lb.X+12, float64(TileSize)*9-lb.Frames[lb.Status][lb.Frame/StatusFramesLightBandit[lb.Status].FrameDuration].Height-lb.Y, 26, lb.Frames[lb.Status][lb.Frame/StatusFramesLightBandit[lb.Status].FrameDuration].Height, color.RGBA{255, 0, 0, 100})
+		ebitenutil.DrawRect(screen, lb.X+12, float64(TileSize)*9-lb.Frames[lb.Status][lb.Frame/StatusFramesLightBandit[lb.Status].FrameDuration].Height-lb.Y, 24, lb.Frames[lb.Status][lb.Frame/StatusFramesLightBandit[lb.Status].FrameDuration].Height, color.RGBA{255, 0, 0, 100})
 	}
 }

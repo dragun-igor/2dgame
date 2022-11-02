@@ -40,15 +40,15 @@ type Frame struct {
 var StatusFramesHeroKnight map[string]StatusData = map[string]StatusData{
 	StatusAttack1: StatusData{
 		FramesNumber:  6,
-		FrameDuration: 4,
+		FrameDuration: 8,
 	},
 	StatusAttack2: StatusData{
 		FramesNumber:  6,
-		FrameDuration: 4,
+		FrameDuration: 8,
 	},
 	StatusAttack3: StatusData{
 		FramesNumber:  8,
-		FrameDuration: 4,
+		FrameDuration: 8,
 	},
 	StatusBlock: StatusData{
 		FramesNumber:  5,

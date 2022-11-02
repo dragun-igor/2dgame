@@ -9,10 +9,10 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
 type HeroKnight struct {
+	Keyboard         Keyboard
 	Frames           map[string][]Frame
 	Status           string
 	PrevStatus       string
@@ -115,6 +115,7 @@ func NewHeroKnight() *HeroKnight {
 	baseSpeedJump := 6.0
 	Frames, _ := GetFramesHeroKnight()
 	return &HeroKnight{
+		Keyboard:         NewDefaultKeyboard(),
 		Frames:           Frames,
 		X:                50,
 		Status:           StatusIdle,
@@ -138,6 +139,13 @@ func NewHeroKnight() *HeroKnight {
 func (hk *HeroKnight) Death() {
 	if hk.Health <= 0 {
 		hk.IsDead = true
+	}
+}
+
+func (hk *HeroKnight) Hurt() {
+	if !hk.IsHurted {
+		hk.IsHurted = true
+		hk.Health -= 50
 	}
 }
 
@@ -176,26 +184,24 @@ func (hk *HeroKnight) Stop() {
 }
 
 func (hk *HeroKnight) Update() error {
+	hk.Keyboard.Update()
 	hk.Death()
-	if inpututil.IsKeyJustPressed(ebiten.KeyR) {
-		hk.Health = 0
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyE) {
+	if hk.Keyboard[KeyAttack].IsKeyJustPressed {
 		hk.Attack()
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+	if hk.Keyboard[KeyJump].IsKeyJustPressed {
 		hk.Jump()
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyControlLeft) {
+	if hk.Keyboard[KeyRoll].IsKeyJustPressed {
 		hk.Roll()
 	}
-	if ebiten.IsKeyPressed(ebiten.KeyA) {
+	if hk.Keyboard[KeyRunLeft].IsKeyPressed {
 		hk.Direction = DirectionLeft
 	}
-	if ebiten.IsKeyPressed(ebiten.KeyD) {
+	if hk.Keyboard[KeyRunRight].IsKeyPressed {
 		hk.Direction = DirectionRight
 	}
-	if ebiten.IsKeyPressed(ebiten.KeyA) || ebiten.IsKeyPressed(ebiten.KeyD) {
+	if hk.Keyboard[KeyRunLeft].IsKeyPressed || hk.Keyboard[KeyRunRight].IsKeyPressed {
 		hk.Run()
 	} else {
 		hk.Stop()
@@ -204,6 +210,8 @@ func (hk *HeroKnight) Update() error {
 	switch {
 	case hk.IsDead:
 		hk.Status = StatusDeath
+	case hk.IsHurted:
+		hk.Status = StatusHurt
 	case hk.IsAttacking:
 		switch hk.AttackType {
 		case AttackType1:
@@ -269,7 +277,7 @@ func (hk *HeroKnight) Update() error {
 		hk.Frame++
 	}
 
-	if hk.Frame == hk.LastFrame {
+	if hk.Frame == hk.LastFrame && hk.Status != StatusDeath {
 		if hk.IsAttacking {
 			hk.Frame = 0
 			hk.IsAttacking = false
@@ -277,6 +285,10 @@ func (hk *HeroKnight) Update() error {
 		if hk.IsRolling {
 			hk.Frame = 0
 			hk.IsRolling = false
+		}
+		if hk.IsHurted {
+			hk.Frame = 0
+			hk.IsHurted = false
 		}
 	}
 
@@ -297,10 +309,11 @@ func (hk *HeroKnight) Draw(screen *ebiten.Image) {
 		op.GeoM.Translate(hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Width, 0.0)
 	}
 	op.GeoM.Translate(hk.X, float64(TileSize)*9-hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Height-hk.Y)
+	ebitenutil.DrawRect(screen, hk.X+(hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Width-30)/2, float64(TileSize)*9-hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Height-hk.Y-5, 30.0/100.0*float64(hk.Health), 5, color.RGBA{255, 0, 0, 255})
 	screen.DrawImage(hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Img, op)
 	w := hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Width // - 35
 	if boxesShow {
 		ebitenutil.DrawRect(screen, hk.X, float64(TileSize)*9-hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Height-hk.Y, w, hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Height, color.RGBA{0, 0, 255, 100})
-		ebitenutil.DrawRect(screen, hk.X+40, float64(TileSize)*9-hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Height-hk.Y, 23, hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Height, color.RGBA{255, 0, 0, 100})
+		ebitenutil.DrawRect(screen, hk.X+35, float64(TileSize)*9-hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Height-hk.Y, 30, hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Height, color.RGBA{255, 0, 0, 100})
 	}
 }
