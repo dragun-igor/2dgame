@@ -1,7 +1,10 @@
 package game
 
 import (
-	"sync"
+	"image/png"
+	"math/rand"
+	"os"
+	"sort"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -9,22 +12,36 @@ import (
 )
 
 type Game struct {
-	hk *HeroKnight
-	lb *LightBandit
-	hb *LightBandit
+	background *ebiten.Image
+	hk         *HeroKnight
+	enemies    map[string]*Bandit
 }
 
 var boxesShow bool
-var once sync.Once
-var attack bool
-var runLeft bool
-var runRight bool
+var onceBody = func(b *Bandit) {
+	time.Sleep(time.Millisecond * time.Duration(rand.Intn(1000)))
+	ticker := time.NewTicker(time.Millisecond * 700)
+LOOP:
+	for {
+		select {
+		case <-ticker.C:
+			if !b.IsDead {
+				b.AttackAction = !b.AttackAction
+			} else {
+				break LOOP
+			}
+		}
+	}
+}
 
 func NewGame() *Game {
+	enemies := make(map[string]*Bandit)
+	enemies["bandit1"] = NewHeavyBandit()
+	enemies["bandit2"] = NewLightBandit()
 	return &Game{
-		hk: NewHeroKnight(),
-		lb: NewLightBandit(),
-		hb: NewHeavyBandit(),
+		background: GetBackground(),
+		hk:         NewHeroKnight(),
+		enemies:    enemies,
 	}
 }
 
@@ -32,77 +49,30 @@ func (g *Game) Update() error {
 	if inpututil.IsKeyJustPressed(ebiten.KeyB) {
 		boxesShow = !boxesShow
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyZ) {
-		g.lb.Health = 100
-		g.lb.IsDead = false
-	}
-	var onceBody = func() {
-		ticker := time.NewTicker(time.Millisecond * 700)
-	LOOP:
-		for {
-			select {
-			case <-ticker.C:
-				if !g.lb.IsDead {
-					attack = !attack
-				} else {
-					break LOOP
-				}
-			}
+	rand.Seed(time.Now().UnixMicro())
+	// go func() {
+	// 	once.Do(onceBody)
+	// }()
+
+	for _, unit := range g.enemies {
+		if !unit.IsDead {
+			unit.RunLeftAction = (unit.X+float64(12*Scale))-(g.hk.X+float64(65*Scale)) > 2
+			unit.RunRightAction = (g.hk.X+float64(35*Scale))-(unit.X+float64(36*Scale)) > 2
 		}
-	}
-	go func() {
-		once.Do(onceBody)
-	}()
 
-	if !g.lb.IsDead {
-		runLeft = (g.lb.X+12)-(g.hk.X+65) > 2
-		runRight = (g.hk.X+35)-(g.lb.X+36) > 2
-	}
+		go func(unit *Bandit) {
+			unit.Once.Do(func() {
+				onceBody(unit)
+			})
+		}(unit)
 
-	if !g.lb.IsDead {
-		g.lb.Update(attack, runLeft, runRight)
-	}
-
-	if !g.hb.IsDead {
-		g.hb.Update(attack, runLeft, runRight)
+		if !unit.IsDead {
+			unit.Update(g.hk)
+		}
 	}
 
 	if !g.hk.IsDead || g.hk.Frame != g.hk.LastFrame {
-		g.hk.Update()
-	}
-
-	if (g.hk.Status == StatusAttack1 || g.hk.Status == StatusAttack2 || g.hk.Status == StatusAttack3) && g.hk.Frame == g.hk.LastFrame/2 && g.hk.Y < 48 {
-		if ((g.lb.X+12)-(g.hk.X+65) < 35 &&
-			((g.lb.X+12)-(g.hk.X+65)) > -1 &&
-			g.hk.Side > 0) ||
-			((g.hk.X+35)-(g.lb.X+36) < 35 &&
-				(g.hk.X+35)-(g.lb.X+12) > -1 &&
-				g.hk.Side < 0) {
-			g.lb.Hurt()
-		}
-	}
-
-	if g.lb.Status == StatusAttack && g.lb.Frame == g.lb.LastFrame/2 && !g.hk.IsRolling && g.hk.Y < 48 {
-		if ((g.lb.X+12)-(g.hk.X+65) < 12 &&
-			(g.lb.X+12)-(g.hk.X+65) > -1 &&
-			g.lb.Side > 0) ||
-			((g.hk.X+35)-(g.lb.X+36) < 12 &&
-				(g.hk.X+35)-(g.lb.X+36) > -1 &&
-				g.lb.Side < 0) {
-			g.hk.Hurt()
-		}
-	}
-
-	if g.hk.IsRunning && !g.hk.IsRolling && !g.lb.IsDead {
-		if g.hk.Side > 0 {
-			if g.hk.X+65 > g.lb.X+12 && g.hk.X+35 < g.lb.X+36 && g.hk.Y < 48 {
-				g.hk.X = g.lb.X + 12 - 65
-			}
-		} else {
-			if g.hk.X+35 < g.lb.X+36 && g.hk.X+65 > g.lb.X+12 && g.hk.Y < 48 {
-				g.hk.X = g.lb.X + 36 - 35
-			}
-		}
+		g.hk.Update(g.enemies)
 	}
 	return nil
 }
@@ -111,8 +81,28 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 	return outsideWidth, outsideHeight
 }
 
+func GetBackground() *ebiten.Image {
+	file, _ := os.Open("_assets/Background/Battleground1.png")
+	img, _ := png.Decode(file)
+	file.Close()
+	return ebiten.NewImageFromImage(img)
+}
+
 func (g *Game) Draw(screen *ebiten.Image) {
-	g.lb.Draw(screen)
-	g.hb.Draw(screen)
+	op := &ebiten.DrawImageOptions{}
+	cameraX := g.hk.X - float64(640*Scale) + float64(640*Scale)
+	// cameraY := g.hk.Y - float64(360*Scale) + float64(360*Scale)
+	op.GeoM.Translate(-cameraX, 0)
+	screen.DrawImage(g.background, op)
+	var keys []string
+	for key := range g.enemies {
+		keys = append(keys, key)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i] > keys[j]
+	})
+	for _, key := range keys {
+		g.enemies[key].Draw(screen, g.hk.X, g.hk.Y)
+	}
 	g.hk.Draw(screen)
 }

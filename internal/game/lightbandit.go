@@ -6,12 +6,13 @@ import (
 	"image/png"
 	"os"
 	"strconv"
+	"sync"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
-type LightBandit struct {
+type Bandit struct {
 	Keyboard         Keyboard
 	Frames           map[string][]Frame
 	Status           string
@@ -36,11 +37,15 @@ type LightBandit struct {
 	IsAttacking      bool
 	IsJumping        bool
 	IsRunning        bool
+	AttackAction     bool
+	RunLeftAction    bool
+	RunRightAction   bool
+	Once             sync.Once
 }
 
-func NewLightBandit() *LightBandit {
-	Frames, _ := GetFramesLightBandit("LightBandit")
-	return &LightBandit{
+func NewLightBandit() *Bandit {
+	Frames, _ := GetFramesBandit("LightBandit")
+	return &Bandit{
 		Keyboard:         NewEmulationKeyboard(),
 		Type:             "LightBandit",
 		Frames:           Frames,
@@ -62,9 +67,9 @@ func NewLightBandit() *LightBandit {
 	}
 }
 
-func NewHeavyBandit() *LightBandit {
-	Frames, _ := GetFramesLightBandit("HeavyBandit")
-	return &LightBandit{
+func NewHeavyBandit() *Bandit {
+	Frames, _ := GetFramesBandit("HeavyBandit")
+	return &Bandit{
 		Keyboard:         NewEmulationKeyboard(),
 		Type:             "HeavyBandit",
 		Frames:           Frames,
@@ -86,7 +91,7 @@ func NewHeavyBandit() *LightBandit {
 	}
 }
 
-func GetFramesLightBandit(strType string) (map[string][]Frame, error) {
+func GetFramesBandit(strType string) (map[string][]Frame, error) {
 	var file *os.File
 	var img image.Image
 	var cfg image.Config
@@ -125,113 +130,125 @@ func GetFramesLightBandit(strType string) (map[string][]Frame, error) {
 	return frames, err
 }
 
-func (lb *LightBandit) Death() {
-	if lb.Health <= 0 {
-		lb.IsDead = true
+func (b *Bandit) Death() {
+	if b.Health <= 0 {
+		b.IsDead = true
 	}
 }
 
-func (lb *LightBandit) Hurt() {
-	if !lb.IsHurted {
-		lb.IsHurted = true
-		lb.Health -= 10
+func (b *Bandit) Hurt() {
+	if !b.IsHurted {
+		b.IsHurted = true
+		b.Health -= 30
 	}
 }
 
-func (hk *LightBandit) Attack() {
-	if !hk.IsAttacking && !hk.IsDead {
-		hk.IsAttacking = true
+func (b *Bandit) Attack() {
+	if !b.IsAttacking && !b.IsDead {
+		b.IsAttacking = true
 	}
 }
 
-func (lb *LightBandit) Run() {
-	lb.IsRunning = true
+func (b *Bandit) Run() {
+	b.IsRunning = true
 }
 
-func (lb *LightBandit) Stop() {
-	lb.IsRunning = false
+func (b *Bandit) Stop() {
+	b.IsRunning = false
 }
 
-func (lb *LightBandit) Update(keyAttack, keyRunLeft, keyRunRight bool) error {
-	lb.Keyboard[KeyAttack].KeyEmulation = keyAttack
-	lb.Keyboard[KeyRunLeft].KeyEmulation = keyRunLeft
-	lb.Keyboard[KeyRunRight].KeyEmulation = keyRunRight
-	lb.Keyboard.Update()
-	lb.Death()
-	if lb.Keyboard[KeyAttack].IsKeyJustPressed {
-		lb.Attack()
+func (b *Bandit) Update(heroKnight *HeroKnight) error {
+	b.Keyboard[KeyAttack].KeyEmulation = b.AttackAction
+	b.Keyboard[KeyRunLeft].KeyEmulation = b.RunLeftAction
+	b.Keyboard[KeyRunRight].KeyEmulation = b.RunRightAction
+	b.Keyboard.Update()
+	b.Death()
+	if b.Keyboard[KeyAttack].IsKeyJustPressed {
+		b.Attack()
 	}
-	if lb.Keyboard[KeyRunLeft].IsKeyPressed {
-		lb.Direction = DirectionLeft
+	if b.Keyboard[KeyRunLeft].IsKeyPressed {
+		b.Direction = DirectionLeft
 	}
-	if lb.Keyboard[KeyRunRight].IsKeyPressed {
-		lb.Direction = DirectionRight
+	if b.Keyboard[KeyRunRight].IsKeyPressed {
+		b.Direction = DirectionRight
 	}
-	if lb.Keyboard[KeyRunLeft].IsKeyPressed || lb.Keyboard[KeyRunRight].IsKeyPressed {
-		lb.Run()
+	if b.Keyboard[KeyRunLeft].IsKeyPressed || b.Keyboard[KeyRunRight].IsKeyPressed {
+		b.Run()
 	} else {
-		lb.Stop()
+		b.Stop()
 	}
 	switch {
-	case lb.IsDead:
-		lb.Status = StatusDeath
-	case lb.IsHurted:
-		lb.Status = StatusHurt
-	case lb.IsAttacking:
-		lb.Status = StatusAttack
-	case lb.IsRunning:
-		lb.Status = StatusRun
+	case b.IsDead:
+		b.Status = StatusDeath
+	case b.IsHurted:
+		b.Status = StatusHurt
+	case b.IsAttacking:
+		b.Status = StatusAttack
+	case b.IsRunning:
+		b.Status = StatusRun
 	default:
-		lb.Status = StatusCombatIdle
+		b.Status = StatusCombatIdle
 	}
 
-	if lb.IsRunning && !lb.IsDead && !lb.IsAttacking {
-		switch lb.Direction {
+	if b.IsRunning && !b.IsDead && !b.IsAttacking {
+		switch b.Direction {
 		case DirectionLeft:
-			lb.Side = 1.0
+			b.Side = 1.0
 		case DirectionRight:
-			lb.Side = -1.0
+			b.Side = -1.0
 		}
-		lb.X += lb.SpeedRun * -lb.Side
-		if lb.SpeedRun < lb.MaxSpeedRun {
-			lb.SpeedRun += lb.AccelerationRun
+		b.X += b.SpeedRun * -b.Side
+		if b.SpeedRun < b.MaxSpeedRun {
+			b.SpeedRun += b.AccelerationRun
 		} else {
-			lb.SpeedRun = lb.MaxSpeedRun
+			b.SpeedRun = b.MaxSpeedRun
 		}
-		lb.SpeedRun += lb.AccelerationRun
+		b.SpeedRun += b.AccelerationRun
 	} else {
-		lb.SpeedRun = lb.BaseSpeedRun
+		b.SpeedRun = b.BaseSpeedRun
+	}
+
+	if b.Status == StatusAttack && b.Frame == b.LastFrame/2 {
+		if b.Side < 0 && ((b.X+float64(36*Scale))-(heroKnight.X+float64(35*Scale))) < float64(12*Scale) && ((b.X+float64(36*Scale))-(heroKnight.X+float64(35*Scale))) > -float64(12*Scale) {
+			heroKnight.Hurt()
+		}
+		if b.Side > 0 && ((heroKnight.X+float64(65*Scale))-(b.X+float64(12*Scale))) < float64(12*Scale) && ((heroKnight.X+float64(65*Scale))-(b.X+float64(12*Scale))) > -float64(12*Scale) {
+			heroKnight.Hurt()
+		}
 	}
 
 	switch {
-	case lb.Status != lb.PrevStatus:
-		lb.LastFrame = StatusFramesLightBandit[lb.Status].FramesNumber*StatusFramesLightBandit[lb.Status].FrameDuration - 1
-		lb.Frame = 0
-	case lb.Frame < lb.LastFrame:
-		lb.Frame++
+	case b.Status != b.PrevStatus:
+		b.LastFrame = StatusFramesLightBandit[b.Status].FramesNumber*StatusFramesLightBandit[b.Status].FrameDuration - 1
+		b.Frame = 0
+	case b.Frame < b.LastFrame:
+		b.Frame++
 	}
-	if lb.Frame == lb.LastFrame {
-		lb.IsAttacking = false
-		lb.IsHurted = false
-		lb.Frame = 0
+	if b.Frame == b.LastFrame {
+		b.IsAttacking = false
+		b.IsHurted = false
+		b.Frame = 0
 	}
 
-	lb.PrevStatus = lb.Status
+	b.PrevStatus = b.Status
 	return nil
 }
 
-func (lb *LightBandit) Draw(screen *ebiten.Image) {
+func (b *Bandit) Draw(screen *ebiten.Image, X, Y float64) {
+	cameraX := X - float64(640*Scale-300)/2
+	cameraY := Y - float64(360*Scale)/2
 	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Scale(lb.Side, 1.0)
-	if lb.Side < 0 {
-		op.GeoM.Translate(lb.Frames[lb.Status][lb.Frame/StatusFramesLightBandit[lb.Status].FrameDuration].Width, 0.0)
+	op.GeoM.Scale(b.Side*2, 1.0*2)
+	if b.Side < 0 {
+		op.GeoM.Translate(b.Frames[b.Status][b.Frame/StatusFramesLightBandit[b.Status].FrameDuration].Width*2, 0.0)
 	}
-	op.GeoM.Translate(lb.X, float64(TileSize)*9-lb.Frames[lb.Status][lb.Frame/StatusFramesLightBandit[lb.Status].FrameDuration].Height-lb.Y)
-	ebitenutil.DrawRect(screen, lb.X+(lb.Frames[lb.Status][lb.Frame/StatusFramesLightBandit[lb.Status].FrameDuration].Width-30)/2, float64(TileSize)*9-lb.Frames[lb.Status][lb.Frame/StatusFramesLightBandit[lb.Status].FrameDuration].Height-lb.Y-5, 30.0/100.0*float64(lb.Health), 5, color.RGBA{255, 0, 0, 255})
-	screen.DrawImage(lb.Frames[lb.Status][lb.Frame/StatusFramesLightBandit[lb.Status].FrameDuration].Img, op)
-	w := lb.Frames[lb.Status][lb.Frame/StatusFramesLightBandit[lb.Status].FrameDuration].Width
+	// op.GeoM.Translate(b.X, float64(TileSize*2)*9-b.Frames[b.Status][b.Frame/StatusFramesLightBandit[b.Status].FrameDuration].Height*2-b.Y)
+	op.GeoM.Translate(b.X-cameraX, -b.Y-cameraY)
+	screen.DrawImage(b.Frames[b.Status][b.Frame/StatusFramesLightBandit[b.Status].FrameDuration].Img, op)
+
+	w := b.Frames[b.Status][b.Frame/StatusFramesLightBandit[b.Status].FrameDuration].Width
 	if boxesShow {
-		ebitenutil.DrawRect(screen, lb.X, float64(TileSize)*9-lb.Frames[lb.Status][lb.Frame/StatusFramesLightBandit[lb.Status].FrameDuration].Height-lb.Y, w, lb.Frames[lb.Status][lb.Frame/StatusFramesLightBandit[lb.Status].FrameDuration].Height, color.RGBA{0, 0, 255, 100})
-		ebitenutil.DrawRect(screen, lb.X+12, float64(TileSize)*9-lb.Frames[lb.Status][lb.Frame/StatusFramesLightBandit[lb.Status].FrameDuration].Height-lb.Y, 24, lb.Frames[lb.Status][lb.Frame/StatusFramesLightBandit[lb.Status].FrameDuration].Height, color.RGBA{255, 0, 0, 100})
+		ebitenutil.DrawRect(screen, b.X, float64(TileSize)*9-b.Frames[b.Status][b.Frame/StatusFramesLightBandit[b.Status].FrameDuration].Height-b.Y, w, b.Frames[b.Status][b.Frame/StatusFramesLightBandit[b.Status].FrameDuration].Height, color.RGBA{0, 0, 255, 100})
+		ebitenutil.DrawRect(screen, b.X+12, float64(TileSize)*9-b.Frames[b.Status][b.Frame/StatusFramesLightBandit[b.Status].FrameDuration].Height-b.Y, 24, b.Frames[b.Status][b.Frame/StatusFramesLightBandit[b.Status].FrameDuration].Height, color.RGBA{255, 0, 0, 100})
 	}
 }

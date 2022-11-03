@@ -111,8 +111,8 @@ func GetFramesHeroKnight() (map[string][]Frame, error) {
 }
 
 func NewHeroKnight() *HeroKnight {
-	baseSpeedRun := 1.0
-	baseSpeedJump := 6.0
+	baseSpeedRun := 3.0
+	baseSpeedJump := 5.0
 	Frames, _ := GetFramesHeroKnight()
 	return &HeroKnight{
 		Keyboard:         NewDefaultKeyboard(),
@@ -122,14 +122,14 @@ func NewHeroKnight() *HeroKnight {
 		Side:             1.0,
 		AttackType:       AttackType1,
 		SpeedRun:         baseSpeedRun,
-		MaxSpeedRun:      2.5,
+		MaxSpeedRun:      5.0,
 		BaseSpeedRun:     baseSpeedRun,
 		AccelerationRun:  0.03,
 		Health:           100,
 		Stamina:          100,
 		SpeedJump:        baseSpeedJump,
 		BaseSpeedJump:    baseSpeedJump,
-		DecelerationJump: 0.2,
+		DecelerationJump: 0.3,
 		Direction:        DirectionRight,
 		SpeedRoll:        5.0,
 		LastFrame:        StatusFramesHeroKnight[StatusIdle].FrameDuration * StatusFramesHeroKnight[StatusIdle].FramesNumber,
@@ -183,7 +183,7 @@ func (hk *HeroKnight) Stop() {
 	hk.IsRunning = false
 }
 
-func (hk *HeroKnight) Update() error {
+func (hk *HeroKnight) Update(enemies map[string]*Bandit) error {
 	hk.Keyboard.Update()
 	hk.Death()
 	if hk.Keyboard[KeyAttack].IsKeyJustPressed {
@@ -269,6 +269,25 @@ func (hk *HeroKnight) Update() error {
 		hk.SpeedRun = hk.BaseSpeedRun
 	}
 
+	for _, unit := range enemies {
+		if !hk.IsJumping && !hk.IsRolling && !unit.IsDead {
+			if hk.X+float64(65*Scale) > unit.X+float64(12*Scale) && hk.X+float64(65*Scale) < unit.X+float64(36*Scale) {
+				hk.X -= unit.SpeedRun / 1.5
+			}
+			if hk.X+float64(35*Scale) > unit.X+float64(12*Scale) && hk.X+float64(35*Scale) < unit.X+float64(36*Scale) {
+				hk.X += unit.SpeedRun / 1.5
+			}
+		}
+		if hk.IsAttacking && hk.Frame == hk.LastFrame/2 {
+			if hk.Side > 0 && ((hk.X+float64(65*Scale))-(unit.X+float64(12*Scale))) < float64(35*Scale) && ((hk.X+float64(65*Scale))-(unit.X+float64(12*Scale))) > -float64(35*Scale) {
+				unit.Hurt()
+			}
+			if hk.Side < 0 && ((unit.X+float64(36*Scale))-(hk.X+float64(35*Scale))) < float64(35*Scale) && ((unit.X+float64(36*Scale))-(hk.X+float64(35*Scale))) > -float64(35*Scale) {
+				unit.Hurt()
+			}
+		}
+	}
+
 	switch {
 	case hk.Status != hk.PrevStatus:
 		hk.LastFrame = StatusFramesHeroKnight[hk.Status].FramesNumber*StatusFramesHeroKnight[hk.Status].FrameDuration - 1
@@ -297,19 +316,21 @@ func (hk *HeroKnight) Update() error {
 }
 
 func (hk *HeroKnight) Draw(screen *ebiten.Image) {
-	for i := 0; i < 20; i++ {
-		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Translate(float64(TileSize*i), float64(TileSize)*9)
-		screen.DrawImage(hk.Frames["environment"][1].Img, op)
-	}
-
+	cameraX := hk.X - float64(640*Scale-300)/2
+	cameraY := hk.Y - float64(360*Scale)/2
+	// for i := 0; i < 50; i++ {
+	// 	op := &ebiten.DrawImageOptions{}
+	// 	op.GeoM.Translate(float64(TileSize*i), float64(TileSize)*9)
+	// 	op.GeoM.Scale(1.0*2, 1.0*2)
+	// 	screen.DrawImage(hk.Frames["environment"][1].Img, op)
+	// }
 	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Scale(hk.Side, 1.0)
+	op.GeoM.Scale(hk.Side*2, 1.0*2)
 	if hk.Side < 0 {
-		op.GeoM.Translate(hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Width, 0.0)
+		op.GeoM.Translate(hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Width*2, 0.0)
 	}
-	op.GeoM.Translate(hk.X, float64(TileSize)*9-hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Height-hk.Y)
-	ebitenutil.DrawRect(screen, hk.X+(hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Width-30)/2, float64(TileSize)*9-hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Height-hk.Y-5, 30.0/100.0*float64(hk.Health), 5, color.RGBA{255, 0, 0, 255})
+	// op.GeoM.Translate(hk.X, float64(TileSize*2)*9-hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Height*2-hk.Y)
+	op.GeoM.Translate(hk.X-cameraX, -hk.Y-cameraY)
 	screen.DrawImage(hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Img, op)
 	w := hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Width // - 35
 	if boxesShow {

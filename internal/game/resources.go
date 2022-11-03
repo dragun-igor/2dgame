@@ -24,6 +24,7 @@ const (
 	StatusRecover       string = "Recover"
 
 	TileSize int = 32
+	Scale    int = 2
 )
 
 type StatusData struct {
@@ -40,15 +41,15 @@ type Frame struct {
 var StatusFramesHeroKnight map[string]StatusData = map[string]StatusData{
 	StatusAttack1: StatusData{
 		FramesNumber:  6,
-		FrameDuration: 8,
+		FrameDuration: 4,
 	},
 	StatusAttack2: StatusData{
 		FramesNumber:  6,
-		FrameDuration: 8,
+		FrameDuration: 4,
 	},
 	StatusAttack3: StatusData{
 		FramesNumber:  8,
-		FrameDuration: 8,
+		FrameDuration: 4,
 	},
 	StatusBlock: StatusData{
 		FramesNumber:  5,
@@ -92,7 +93,7 @@ var StatusFramesHeroKnight map[string]StatusData = map[string]StatusData{
 	},
 	StatusRoll: StatusData{
 		FramesNumber:  9,
-		FrameDuration: 2,
+		FrameDuration: 4,
 	},
 	StatusRun: StatusData{
 		FramesNumber:  10,

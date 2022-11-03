@@ -9,8 +9,8 @@ import (
 
 func main() {
 	ebiten.SetWindowTitle("Hero Knight")
-	screenWidth := 640
-	screenHeight := 320
+	screenWidth := 640 * game.Scale
+	screenHeight := 360 * game.Scale
 	ebiten.SetWindowSize(screenWidth, screenHeight)
 	game := game.NewGame()
 	if err := ebiten.RunGame(game); err != nil {
