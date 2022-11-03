@@ -73,7 +73,7 @@ var StatusFramesHeroKnight map[string]StatusData = map[string]StatusData{
 	},
 	StatusFall: StatusData{
 		FramesNumber:  4,
-		FrameDuration: 7,
+		FrameDuration: 2,
 	},
 	StatusHurt: StatusData{
 		FramesNumber:  3,

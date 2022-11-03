@@ -236,14 +236,20 @@ func (b *Bandit) Update(heroKnight *HeroKnight) error {
 
 func (b *Bandit) Draw(screen *ebiten.Image, X, Y float64) {
 	cameraX := X - float64(640*Scale-300)/2
-	cameraY := Y - float64(360*Scale)/2
+	if cameraX < 0 {
+		cameraX = 0
+	}
+	if cameraX > 355 { //840 1568
+		cameraX = 355
+	}
+	cameraY := -float64(360*Scale) / 2
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Scale(b.Side*2, 1.0*2)
 	if b.Side < 0 {
 		op.GeoM.Translate(b.Frames[b.Status][b.Frame/StatusFramesLightBandit[b.Status].FrameDuration].Width*2, 0.0)
 	}
 	// op.GeoM.Translate(b.X, float64(TileSize*2)*9-b.Frames[b.Status][b.Frame/StatusFramesLightBandit[b.Status].FrameDuration].Height*2-b.Y)
-	op.GeoM.Translate(b.X-cameraX, -b.Y-cameraY)
+	op.GeoM.Translate(b.X-cameraX, -b.Y-cameraY+14)
 	screen.DrawImage(b.Frames[b.Status][b.Frame/StatusFramesLightBandit[b.Status].FrameDuration].Img, op)
 
 	w := b.Frames[b.Status][b.Frame/StatusFramesLightBandit[b.Status].FrameDuration].Width

@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"image/png"
@@ -38,6 +39,7 @@ type HeroKnight struct {
 	IsAttacking      bool
 	IsBlocking       bool
 	IsJumping        bool
+	IsFalling        bool
 	IsRolling        bool
 	IsRunning        bool
 }
@@ -169,6 +171,12 @@ func (hk *HeroKnight) Jump() {
 	}
 }
 
+func (hk *HeroKnight) Fall() {
+	if hk.IsJumping && !hk.IsFalling {
+		hk.IsFalling = true
+	}
+}
+
 func (hk *HeroKnight) Roll() {
 	if !hk.IsRolling && !hk.IsAttacking && !hk.IsJumping {
 		hk.IsRolling = true
@@ -223,6 +231,8 @@ func (hk *HeroKnight) Update(enemies map[string]*Bandit) error {
 		}
 	case hk.IsRolling:
 		hk.Status = StatusRoll
+	case hk.IsFalling:
+		hk.Status = StatusFall
 	case hk.IsJumping:
 		hk.Status = StatusJump
 	case hk.IsRunning:
@@ -238,12 +248,16 @@ func (hk *HeroKnight) Update(enemies map[string]*Bandit) error {
 	}
 
 	if (hk.IsJumping && !hk.IsDead) || (hk.IsDead && hk.Y > 0) {
+		if hk.SpeedJump < 0 {
+			hk.Fall()
+		}
 		hk.Y += hk.SpeedJump
 		hk.SpeedJump -= hk.DecelerationJump
 		if hk.Y <= 0 {
 			hk.SpeedJump = hk.BaseSpeedJump
 			hk.Y = 0
 			hk.IsJumping = false
+			hk.IsFalling = false
 		}
 	}
 
@@ -311,19 +325,36 @@ func (hk *HeroKnight) Update(enemies map[string]*Bandit) error {
 		}
 	}
 
+	if hk.X < 0 {
+		hk.X = 0
+	}
+
+	if hk.X+100 > 49*32 {
+		hk.X = 49*32 - 100
+	}
+
 	hk.PrevStatus = hk.Status
 	return nil
 }
 
 func (hk *HeroKnight) Draw(screen *ebiten.Image) {
+
 	cameraX := hk.X - float64(640*Scale-300)/2
+	fmt.Println(cameraX)
+	if cameraX < 0 {
+		cameraX = 0
+	}
+	if cameraX > 355 { //840 1568
+		cameraX = 355
+	}
 	cameraY := hk.Y - float64(360*Scale)/2
-	// for i := 0; i < 50; i++ {
-	// 	op := &ebiten.DrawImageOptions{}
-	// 	op.GeoM.Translate(float64(TileSize*i), float64(TileSize)*9)
-	// 	op.GeoM.Scale(1.0*2, 1.0*2)
-	// 	screen.DrawImage(hk.Frames["environment"][1].Img, op)
-	// }
+	for i := 0; i < 50; i++ {
+		op := &ebiten.DrawImageOptions{}
+
+		op.GeoM.Scale(1.0*2, 1.0*2)
+		op.GeoM.Translate(float64(TileSize*i*Scale)-cameraX, hk.Y-cameraY+110)
+		screen.DrawImage(hk.Frames["environment"][1].Img, op)
+	}
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Scale(hk.Side*2, 1.0*2)
 	if hk.Side < 0 {

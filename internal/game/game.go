@@ -1,20 +1,19 @@
 package game
 
 import (
-	"image/png"
+	"fmt"
 	"math/rand"
-	"os"
 	"sort"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
 type Game struct {
-	background *ebiten.Image
-	hk         *HeroKnight
-	enemies    map[string]*Bandit
+	hk      *HeroKnight
+	enemies map[string]*Bandit
 }
 
 var boxesShow bool
@@ -39,9 +38,8 @@ func NewGame() *Game {
 	enemies["bandit1"] = NewHeavyBandit()
 	enemies["bandit2"] = NewLightBandit()
 	return &Game{
-		background: GetBackground(),
-		hk:         NewHeroKnight(),
-		enemies:    enemies,
+		hk:      NewHeroKnight(),
+		enemies: enemies,
 	}
 }
 
@@ -50,9 +48,6 @@ func (g *Game) Update() error {
 		boxesShow = !boxesShow
 	}
 	rand.Seed(time.Now().UnixMicro())
-	// go func() {
-	// 	once.Do(onceBody)
-	// }()
 
 	for _, unit := range g.enemies {
 		if !unit.IsDead {
@@ -74,6 +69,7 @@ func (g *Game) Update() error {
 	if !g.hk.IsDead || g.hk.Frame != g.hk.LastFrame {
 		g.hk.Update(g.enemies)
 	}
+
 	return nil
 }
 
@@ -81,19 +77,7 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 	return outsideWidth, outsideHeight
 }
 
-func GetBackground() *ebiten.Image {
-	file, _ := os.Open("_assets/Background/Battleground1.png")
-	img, _ := png.Decode(file)
-	file.Close()
-	return ebiten.NewImageFromImage(img)
-}
-
 func (g *Game) Draw(screen *ebiten.Image) {
-	op := &ebiten.DrawImageOptions{}
-	cameraX := g.hk.X - float64(640*Scale) + float64(640*Scale)
-	// cameraY := g.hk.Y - float64(360*Scale) + float64(360*Scale)
-	op.GeoM.Translate(-cameraX, 0)
-	screen.DrawImage(g.background, op)
 	var keys []string
 	for key := range g.enemies {
 		keys = append(keys, key)
@@ -105,4 +89,5 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.enemies[key].Draw(screen, g.hk.X, g.hk.Y)
 	}
 	g.hk.Draw(screen)
+	ebitenutil.DebugPrint(screen, fmt.Sprintf("FPS: %.2f\nTPS: %.2f", ebiten.ActualFPS(), ebiten.ActualTPS()))
 }
