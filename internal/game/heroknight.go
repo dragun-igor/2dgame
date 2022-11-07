@@ -1,7 +1,6 @@
 package game
 
 import (
-	"fmt"
 	"image"
 	"image/color"
 	"image/png"
@@ -14,7 +13,6 @@ import (
 
 type HeroKnight struct {
 	Keyboard         Keyboard
-	Frames           map[string][]Frame
 	Status           string
 	PrevStatus       string
 	X                float64
@@ -44,15 +42,15 @@ type HeroKnight struct {
 	IsRunning        bool
 }
 
-func GetFramesHeroKnight() (map[string][]Frame, error) {
+func GetFramesHeroKnight() (*Unit, error) {
 	var file *os.File
 	var img image.Image
 	var cfg image.Config
 	var err error
-	frames := map[string][]Frame{}
+	actionFrames := make(map[string][]*ebiten.Image)
 	for status := range StatusFramesHeroKnight {
 		framesNumber := StatusFramesHeroKnight[status].FramesNumber
-		frms := make([]Frame, 0, framesNumber)
+		frms := make([]*ebiten.Image, 0, framesNumber)
 		for i := 0; i < framesNumber; i++ {
 			file, err = os.Open("_assets/HeroKnight/" + status + "/HeroKnight_" + status + "_" + strconv.Itoa(i) + ".png")
 			if err != nil {
@@ -63,25 +61,20 @@ func GetFramesHeroKnight() (map[string][]Frame, error) {
 				break
 			}
 			file.Close()
-			file, err = os.Open("_assets/HeroKnight/" + status + "/HeroKnight_" + status + "_" + strconv.Itoa(i) + ".png")
-			if err != nil {
-				break
-			}
-			cfg, err = png.DecodeConfig(file)
-			if err != nil {
-				break
-			}
-			file.Close()
-			frms = append(frms, Frame{
-				Img:    ebiten.NewImageFromImage(img),
-				Width:  float64(cfg.Width),
-				Height: float64(cfg.Height),
-			})
+			frms = append(frms, ebiten.NewImageFromImage(img))
 		}
-		frames[status] = frms
+		actionFrames[status] = frms
+	}
+	file, _ = os.Open("_assets/HeroKnight/Idle/HeroKnight_Idle_0.png")
+	cfg, _ = png.DecodeConfig(file)
+	file.Close()
+	unit := &Unit{
+		ActionFrames: actionFrames,
+		Width:        float64(cfg.Width),
+		Height:       float64(cfg.Height),
 	}
 
-	frms := make([]Frame, 0, 4)
+	frms := make([]*ebiten.Image, 0, 4)
 	for i := 0; i < 4; i++ {
 		file, err = os.Open("_assets/EnvironmentTiles/Tile_" + strconv.Itoa(i) + ".png")
 		if err != nil {
@@ -92,33 +85,27 @@ func GetFramesHeroKnight() (map[string][]Frame, error) {
 			break
 		}
 		file.Close()
-		file, err = os.Open("_assets/EnvironmentTiles/Tile_" + strconv.Itoa(i) + ".png")
-		if err != nil {
-			break
-		}
-		cfg, err = png.DecodeConfig(file)
-		if err != nil {
-			break
-		}
-		file.Close()
-		frms = append(frms, Frame{
-			Img:    ebiten.NewImageFromImage(img),
-			Width:  float64(cfg.Width),
-			Height: float64(cfg.Height),
-		})
+		// 	file, err = os.Open("_assets/EnvironmentTiles/Tile_" + strconv.Itoa(i) + ".png")
+		// 	if err != nil {
+		// 		break
+		// 	}
+		// 	cfg, err = png.DecodeConfig(file)
+		// 	if err != nil {
+		// 		break
+		// 	}
+		// 	file.Close()
+		frms = append(frms, ebiten.NewImageFromImage(img))
 	}
-	frames["environment"] = frms
+	unit.ActionFrames["environment"] = frms
 
-	return frames, err
+	return unit, err
 }
 
 func NewHeroKnight() *HeroKnight {
 	baseSpeedRun := 3.0
 	baseSpeedJump := 5.0
-	Frames, _ := GetFramesHeroKnight()
 	return &HeroKnight{
 		Keyboard:         NewDefaultKeyboard(),
-		Frames:           Frames,
 		X:                50,
 		Status:           StatusIdle,
 		Side:             1.0,
@@ -337,14 +324,14 @@ func (hk *HeroKnight) Update(enemies map[string]*Bandit) error {
 	return nil
 }
 
-func (hk *HeroKnight) Draw(screen *ebiten.Image) {
+func (hk *HeroKnight) Draw(screen *ebiten.Image, unit *Unit) {
 
 	cameraX := hk.X - float64(640*Scale-300)/2
-	fmt.Println(cameraX)
+
 	if cameraX < 0 {
 		cameraX = 0
 	}
-	if cameraX > 355 { //840 1568
+	if cameraX > 355 {
 		cameraX = 355
 	}
 	cameraY := hk.Y - float64(360*Scale)/2
@@ -352,20 +339,20 @@ func (hk *HeroKnight) Draw(screen *ebiten.Image) {
 		op := &ebiten.DrawImageOptions{}
 
 		op.GeoM.Scale(1.0*2, 1.0*2)
-		op.GeoM.Translate(float64(TileSize*i*Scale)-cameraX, hk.Y-cameraY+110)
-		screen.DrawImage(hk.Frames["environment"][1].Img, op)
+		op.GeoM.Translate(float64(TileSize*i*Scale)-cameraX, hk.Y-cameraY+106)
+		screen.DrawImage(unit.ActionFrames["environment"][1], op)
 	}
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Scale(hk.Side*2, 1.0*2)
 	if hk.Side < 0 {
-		op.GeoM.Translate(hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Width*2, 0.0)
+		op.GeoM.Translate(unit.Width*2, 0.0)
 	}
 	// op.GeoM.Translate(hk.X, float64(TileSize*2)*9-hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Height*2-hk.Y)
 	op.GeoM.Translate(hk.X-cameraX, -hk.Y-cameraY)
-	screen.DrawImage(hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Img, op)
-	w := hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Width // - 35
+	screen.DrawImage(unit.ActionFrames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration], op)
+	w := unit.Width // - 35
 	if boxesShow {
-		ebitenutil.DrawRect(screen, hk.X, float64(TileSize)*9-hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Height-hk.Y, w, hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Height, color.RGBA{0, 0, 255, 100})
-		ebitenutil.DrawRect(screen, hk.X+35, float64(TileSize)*9-hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Height-hk.Y, 30, hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Height, color.RGBA{255, 0, 0, 100})
+		ebitenutil.DrawRect(screen, hk.X, float64(TileSize)*9-unit.Height-hk.Y, w, unit.Height, color.RGBA{0, 0, 255, 100})
+		ebitenutil.DrawRect(screen, hk.X+35, float64(TileSize)*9-unit.Height-hk.Y, 30, unit.Height, color.RGBA{255, 0, 0, 100})
 	}
 }

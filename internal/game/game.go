@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"sort"
 	"time"
@@ -12,8 +13,9 @@ import (
 )
 
 type Game struct {
-	hk      *HeroKnight
+	Frames  map[string]*Unit
 	enemies map[string]*Bandit
+	hk      *HeroKnight
 	w       *Wizard
 }
 
@@ -34,12 +36,59 @@ LOOP:
 	}
 }
 
+var onceBody1 = func(b *Wizard) {
+	time.Sleep(time.Millisecond * time.Duration(rand.Intn(1000)))
+	ticker := time.NewTicker(time.Millisecond * 700)
+LOOP:
+	for {
+		select {
+		case <-ticker.C:
+			if !b.IsDead {
+				b.AttackAction = !b.AttackAction
+			} else {
+				break LOOP
+			}
+		}
+	}
+}
+
 func NewGame() *Game {
+	frames := make(map[string]*Unit)
+	if unit, err := GetFramesHeroKnight(); err != nil {
+		log.Fatal(err)
+	} else {
+		fmt.Println()
+		fmt.Println(unit)
+		frames["HeroKnight"] = unit
+	}
+	if unit, err := GetFramesBandit(LightBandit); err != nil {
+		log.Fatal(err)
+	} else {
+		fmt.Println()
+		fmt.Println(unit)
+		frames["LightBandit"] = unit
+	}
+	if unit, err := GetFramesBandit(HeavyBandit); err != nil {
+		log.Fatal(err)
+	} else {
+		fmt.Println()
+		fmt.Println(unit)
+		frames["HeavyBandit"] = unit
+	}
+	if unit, err := GetFramesWizard(); err != nil {
+		log.Fatal(err)
+	} else {
+		fmt.Println()
+		fmt.Println(unit)
+		frames["Wizard"] = unit
+	}
+
 	enemies := make(map[string]*Bandit)
-	enemies["bandit1"] = NewHeavyBandit()
-	enemies["bandit2"] = NewLightBandit()
+	enemies[HeavyBandit] = NewHeavyBandit()
+	enemies[LightBandit] = NewLightBandit()
 	wizard := NewWizard()
 	return &Game{
+		Frames:  frames,
 		hk:      NewHeroKnight(),
 		enemies: enemies,
 		w:       wizard,
@@ -69,6 +118,21 @@ func (g *Game) Update() error {
 		}
 	}
 
+	if !g.w.IsDead {
+		g.w.RunLeftAction = (g.w.X+float64(12*Scale))-(g.hk.X+float64(65*Scale)) > 2
+		g.w.RunRightAction = (g.hk.X+float64(35*Scale))-(g.w.X+float64(36*Scale)) > 2
+	}
+
+	go func(unit *Wizard) {
+		unit.Once.Do(func() {
+			onceBody1(unit)
+		})
+	}(g.w)
+
+	if !g.w.IsDead {
+		g.w.Update(g.hk)
+	}
+
 	if !g.hk.IsDead || g.hk.Frame != g.hk.LastFrame {
 		g.hk.Update(g.enemies)
 	}
@@ -89,22 +153,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		return keys[i] > keys[j]
 	})
 	for _, key := range keys {
-		g.enemies[key].Draw(screen, g.hk.X, g.hk.Y)
+		g.enemies[key].Draw(screen, g.Frames[key], g.hk.X, g.hk.Y)
 	}
-	g.w.Draw(screen)
-	g.hk.Draw(screen)
+	// g.w.Draw(screen, g.Frames["Wizard"], g.hk.X, g.hk.Y)
+	g.hk.Draw(screen, g.Frames["HeroKnight"])
 	ebitenutil.DebugPrint(screen, fmt.Sprintf("FPS: %.2f\nTPS: %.2f", ebiten.ActualFPS(), ebiten.ActualTPS()))
-
-	// f, _ := os.Open("_assets/Wizard/Attack1.png")
-	// pngImg, _ := png.Decode(f)
-	// f.Close()
-	// img := ebiten.NewImageFromImage(pngImg)
-	// screen.DrawImage(img.SubImage(image.Rect(0, 0, 231, 190)).(*ebiten.Image), nil)
-	// screen.DrawImage(img.SubImage(image.Rect(231, 0, 231*2, 190)).(*ebiten.Image), nil)
-	// screen.DrawImage(img.SubImage(image.Rect(231*2, 0, 231*3, 190)).(*ebiten.Image), nil)
-	// screen.DrawImage(img.SubImage(image.Rect(231*3, 0, 231*4, 190)).(*ebiten.Image), nil)
-	// screen.DrawImage(img.SubImage(image.Rect(231*4, 0, 231*5, 190)).(*ebiten.Image), nil)
-	// screen.DrawImage(img.SubImage(image.Rect(231*5, 0, 231*6, 190)).(*ebiten.Image), nil)
-	// screen.DrawImage(img.SubImage(image.Rect(231*6, 0, 231*7, 190)).(*ebiten.Image), nil)
-	// screen.DrawImage(img.SubImage(image.Rect(231*7, 0, 231*8, 190)).(*ebiten.Image), nil)
 }

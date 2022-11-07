@@ -32,11 +32,16 @@ type StatusData struct {
 	FrameDuration int
 }
 
-type Frame struct {
-	Img    *ebiten.Image
-	Width  float64
-	Height float64
+type Unit struct {
+	ActionFrames map[string][]*ebiten.Image
+	Width        float64
+	Height       float64
 }
+
+const (
+	LightBandit string = "LightBandit"
+	HeavyBandit string = "HeavyBandit"
+)
 
 var StatusFramesHeroKnight map[string]StatusData = map[string]StatusData{
 	StatusAttack1: StatusData{
@@ -73,7 +78,7 @@ var StatusFramesHeroKnight map[string]StatusData = map[string]StatusData{
 	},
 	StatusFall: StatusData{
 		FramesNumber:  4,
-		FrameDuration: 2,
+		FrameDuration: 7,
 	},
 	StatusHurt: StatusData{
 		FramesNumber:  3,
@@ -132,6 +137,41 @@ var StatusFramesLightBandit map[string]StatusData = map[string]StatusData{
 	},
 	StatusRecover: StatusData{
 		FramesNumber:  8,
+		FrameDuration: 7,
+	},
+	StatusRun: StatusData{
+		FramesNumber:  8,
+		FrameDuration: 7,
+	},
+}
+
+var StatusFramesWizard map[string]StatusData = map[string]StatusData{
+	StatusAttack1: StatusData{
+		FramesNumber:  8,
+		FrameDuration: 4,
+	},
+	StatusAttack2: StatusData{
+		FramesNumber:  8,
+		FrameDuration: 7,
+	},
+	StatusDeath: StatusData{
+		FramesNumber:  7,
+		FrameDuration: 4,
+	},
+	StatusFall: StatusData{
+		FramesNumber:  2,
+		FrameDuration: 7,
+	},
+	StatusHurt: StatusData{
+		FramesNumber:  4,
+		FrameDuration: 7,
+	},
+	StatusIdle: StatusData{
+		FramesNumber:  6,
+		FrameDuration: 7,
+	},
+	StatusJump: StatusData{
+		FramesNumber:  2,
 		FrameDuration: 7,
 	},
 	StatusRun: StatusData{
