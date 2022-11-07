@@ -14,6 +14,7 @@ import (
 type Game struct {
 	hk      *HeroKnight
 	enemies map[string]*Bandit
+	w       *Wizard
 }
 
 var boxesShow bool
@@ -37,9 +38,11 @@ func NewGame() *Game {
 	enemies := make(map[string]*Bandit)
 	enemies["bandit1"] = NewHeavyBandit()
 	enemies["bandit2"] = NewLightBandit()
+	wizard := NewWizard()
 	return &Game{
 		hk:      NewHeroKnight(),
 		enemies: enemies,
+		w:       wizard,
 	}
 }
 
@@ -88,6 +91,20 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	for _, key := range keys {
 		g.enemies[key].Draw(screen, g.hk.X, g.hk.Y)
 	}
+	g.w.Draw(screen)
 	g.hk.Draw(screen)
 	ebitenutil.DebugPrint(screen, fmt.Sprintf("FPS: %.2f\nTPS: %.2f", ebiten.ActualFPS(), ebiten.ActualTPS()))
+
+	// f, _ := os.Open("_assets/Wizard/Attack1.png")
+	// pngImg, _ := png.Decode(f)
+	// f.Close()
+	// img := ebiten.NewImageFromImage(pngImg)
+	// screen.DrawImage(img.SubImage(image.Rect(0, 0, 231, 190)).(*ebiten.Image), nil)
+	// screen.DrawImage(img.SubImage(image.Rect(231, 0, 231*2, 190)).(*ebiten.Image), nil)
+	// screen.DrawImage(img.SubImage(image.Rect(231*2, 0, 231*3, 190)).(*ebiten.Image), nil)
+	// screen.DrawImage(img.SubImage(image.Rect(231*3, 0, 231*4, 190)).(*ebiten.Image), nil)
+	// screen.DrawImage(img.SubImage(image.Rect(231*4, 0, 231*5, 190)).(*ebiten.Image), nil)
+	// screen.DrawImage(img.SubImage(image.Rect(231*5, 0, 231*6, 190)).(*ebiten.Image), nil)
+	// screen.DrawImage(img.SubImage(image.Rect(231*6, 0, 231*7, 190)).(*ebiten.Image), nil)
+	// screen.DrawImage(img.SubImage(image.Rect(231*7, 0, 231*8, 190)).(*ebiten.Image), nil)
 }
