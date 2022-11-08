@@ -153,14 +153,14 @@ func GetFramesWizard() (*Unit, error) {
 		file.Close()
 		ebitenImg := ebiten.NewImageFromImage(img)
 		for i := 0; i < framesNumber; i++ {
-			frms = append(frms, ebitenImg.SubImage(image.Rect(231*i, 0, 231*i+231, 150)).(*ebiten.Image))
+			frms = append(frms, ebitenImg.SubImage(image.Rect(231*i, 0, 231*i+231, 144)).(*ebiten.Image))
 		}
 		actionFrames[status] = frms
 	}
 	unit := &Unit{
 		ActionFrames: actionFrames,
 		Width:        231,
-		Height:       140,
+		Height:       144,
 	}
 	return unit, err
 }
@@ -283,7 +283,7 @@ func (e *Enemy) Draw(screen *ebiten.Image, unit *Unit, camera *Camera) {
 	}
 	offsetX := e.X - camera.X
 	offsetY := -e.Y - camera.EnemyY - unit.Height*float64(Scale)*e.Scale
-	op.GeoM.Translate(offsetX, offsetY)
+	op.GeoM.Translate(offsetX, offsetY+4.0)
 	screen.DrawImage(unit.ActionFrames[e.Status][e.Frame/StatusFrames[e.Type][e.Status].FrameDuration], op)
 	if boxesShow {
 		ebitenutil.DrawRect(screen, offsetX, offsetY, e.Width, e.Height, color.RGBA{0, 0, 255, 100})

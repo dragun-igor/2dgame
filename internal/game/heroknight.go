@@ -178,7 +178,7 @@ func (hk *HeroKnight) Stop() {
 	hk.IsRunning = false
 }
 
-func (hk *HeroKnight) Update(enemies map[string]*Enemy) error {
+func (hk *HeroKnight) Update(enemies map[string]*Enemy, environment []Environment) error {
 	hk.Keyboard.Update()
 	hk.Death()
 	if hk.Keyboard[KeyAttack].IsKeyJustPressed {
@@ -240,11 +240,20 @@ func (hk *HeroKnight) Update(enemies map[string]*Enemy) error {
 		}
 		hk.Y += hk.SpeedJump
 		hk.SpeedJump -= hk.DecelerationJump
+		for _, env := range environment {
+			if env.Y-hk.Y < 5 && env.Y-hk.Y > -5 {
+				hk.SpeedJump = hk.BaseSpeedJump
+				hk.Y = env.Y
+				hk.IsJumping = false
+				hk.IsFalling = false
+			}
+		}
 		if hk.Y <= 0 {
 			hk.SpeedJump = hk.BaseSpeedJump
 			hk.Y = 0
 			hk.IsJumping = false
 			hk.IsFalling = false
+
 		}
 	}
 
@@ -325,18 +334,18 @@ func (hk *HeroKnight) Update(enemies map[string]*Enemy) error {
 }
 
 func (hk *HeroKnight) Draw(screen *ebiten.Image, unit *Unit, camera *Camera) {
-	for i := 0; i < 50; i++ {
-		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Scale(1.0*float64(Scale), 1.0*float64(Scale))
-		op.GeoM.Translate(float64(TileSize*i*Scale)-camera.X, hk.Y-camera.MainCharacterY)
-		screen.DrawImage(unit.ActionFrames["environment"][1], op)
-	}
+	// for i := 0; i < 50; i++ {
+	// 	op := &ebiten.DrawImageOptions{}
+	// 	op.GeoM.Scale(1.0*float64(Scale), 1.0*float64(Scale))
+	// 	op.GeoM.Translate(float64(TileSize*i*Scale)-camera.X, hk.Y-camera.MainCharacterY)
+	// 	screen.DrawImage(unit.ActionFrames["environment"][1], op)
+	// }
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Scale(hk.Side*hk.Scale*float64(Scale), hk.Scale*float64(Scale))
 	if hk.Side < 0 {
 		op.GeoM.Translate(hk.Width, 0.0)
 	}
-	op.GeoM.Translate(hk.X-camera.X, -hk.Y-camera.MainCharacterY-hk.Height)
+	op.GeoM.Translate(hk.X-camera.X, -hk.Y-camera.MainCharacterY-hk.Height+4.0)
 	screen.DrawImage(unit.ActionFrames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration], op)
 	if boxesShow {
 		ebitenutil.DrawRect(screen, hk.X-camera.X, -hk.Y-camera.MainCharacterY-hk.Height, hk.Width, hk.Height, color.RGBA{0, 0, 255, 100})

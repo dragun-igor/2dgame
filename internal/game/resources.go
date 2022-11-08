@@ -26,8 +26,9 @@ const (
 	StatusRecover       string = "Recover"
 
 	TileSize int = 32
-	Scale    int = 2
 )
+
+var Scale int = 2
 
 type StatusData struct {
 	FramesNumber  int

@@ -13,10 +13,11 @@ import (
 )
 
 type Game struct {
-	Camera  *Camera
-	Frames  map[string]*Unit
-	enemies map[string]*Enemy
-	hk      *HeroKnight
+	Camera        *Camera
+	Frames        map[string]*Unit
+	Enemies       map[string]*Enemy
+	MainCharacter *HeroKnight
+	Environment   []Environment
 }
 
 type Camera struct {
@@ -78,13 +79,41 @@ func NewGame() (*Game, error) {
 		enemies[Wizard] = NewEnemy(Wizard, 450.0, 0.0, unit.Width, unit.Height)
 	}
 
+	environment := make([]Environment, 0, 200)
+	// for i := 0; i < 50; i++ {
+	// 	op := &ebiten.DrawImageOptions{}
+	// 	op.GeoM.Scale(1.0*float64(Scale), 1.0*float64(Scale))
+	// 	op.GeoM.Translate(float64(TileSize*i*Scale)-camera.X, hk.Y-camera.MainCharacterY)
+	// 	screen.DrawImage(unit.ActionFrames["environment"][1], op)
+	// }
+	for i := 0; i < 50; i++ {
+		environment = append(environment, Environment{
+			X:      float64(TileSize * i * Scale),
+			Y:      0.0,
+			Width:  float64(TileSize * Scale),
+			Height: float64(TileSize * Scale),
+			Scale:  1.0,
+		})
+	}
+
+	for i := 15; i < 18; i++ {
+		environment = append(environment, Environment{
+			X:      float64(TileSize * i * Scale),
+			Y:      -float64(TileSize * Scale),
+			Width:  float64(TileSize * Scale),
+			Height: float64(TileSize * Scale),
+			Scale:  1.0,
+		})
+	}
+
 	game := &Game{
 		Camera: &Camera{
 			EnemyY: -(360 * float64(Scale)) / 2,
 		},
-		Frames:  frames,
-		hk:      hk,
-		enemies: enemies,
+		Frames:        frames,
+		MainCharacter: hk,
+		Enemies:       enemies,
+		Environment:   environment,
 	}
 
 	return game, nil
@@ -94,12 +123,18 @@ func (g *Game) Update() error {
 	if inpututil.IsKeyJustPressed(ebiten.KeyB) {
 		boxesShow = !boxesShow
 	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyH) {
+		Scale++
+		if Scale > 3 {
+			Scale = 1
+		}
+	}
 	rand.Seed(time.Now().UnixMicro())
 
-	for _, enemy := range g.enemies {
+	for _, enemy := range g.Enemies {
 		if !enemy.IsDead {
-			enemy.RunLeftAction = (enemy.X+enemy.Indent)-(g.hk.X+g.hk.Width-g.hk.Indent) > 2
-			enemy.RunRightAction = (g.hk.X+g.hk.Indent)-(enemy.X+enemy.Width-enemy.Indent) > 2
+			enemy.RunLeftAction = (enemy.X+enemy.Indent)-(g.MainCharacter.X+g.MainCharacter.Width-g.MainCharacter.Indent) > 2
+			enemy.RunRightAction = (g.MainCharacter.X+g.MainCharacter.Indent)-(enemy.X+enemy.Width-enemy.Indent) > 2
 		}
 
 		go func(enemy *Enemy) {
@@ -108,12 +143,12 @@ func (g *Game) Update() error {
 			})
 		}(enemy)
 		if !enemy.IsDead || enemy.Frame != enemy.LastFrame {
-			enemy.Update(g.hk)
+			enemy.Update(g.MainCharacter)
 		}
 	}
 
-	if !g.hk.IsDead || g.hk.Frame != g.hk.LastFrame {
-		g.hk.Update(g.enemies)
+	if !g.MainCharacter.IsDead || g.MainCharacter.Frame != g.MainCharacter.LastFrame {
+		g.MainCharacter.Update(g.Enemies, g.Environment)
 	}
 
 	return nil
@@ -124,19 +159,25 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	g.Camera.RefreshOffset(g.hk.X, g.hk.Y)
-	keys := make([]string, 0, len(g.enemies))
-	for key := range g.enemies {
+	g.Camera.RefreshOffset(g.MainCharacter.X, g.MainCharacter.Y)
+	for _, env := range g.Environment {
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Scale(float64(Scale), float64(Scale))
+		op.GeoM.Translate(env.X-g.Camera.X, env.Y-g.Camera.EnemyY)
+		screen.DrawImage(g.Frames[MainCharacter].ActionFrames["environment"][1], op)
+	}
+	keys := make([]string, 0, len(g.Enemies))
+	for key := range g.Enemies {
 		keys = append(keys, key)
 	}
 	sort.Slice(keys, func(i, j int) bool {
 		return keys[i] > keys[j]
 	})
 	for _, key := range keys {
-		g.enemies[key].Draw(screen, g.Frames[key], g.Camera)
+		g.Enemies[key].Draw(screen, g.Frames[key], g.Camera)
 	}
-	g.hk.Draw(screen, g.Frames[MainCharacter], g.Camera)
+	g.MainCharacter.Draw(screen, g.Frames[MainCharacter], g.Camera)
 	ebitenutil.DebugPrint(screen, fmt.Sprintf("FPS: %.2f\nTPS: %.2f", ebiten.ActualFPS(), ebiten.ActualTPS()))
 	ebitenutil.DrawRect(screen, 9.0, 49.0, 100.0+2.0, 20.0+2.0, color.RGBA{255, 255, 255, 255})
-	ebitenutil.DrawRect(screen, 10.0, 50.0, float64(g.hk.Health), 20.0, color.RGBA{255, 0, 0, 255})
+	ebitenutil.DrawRect(screen, 10.0, 50.0, float64(g.MainCharacter.Health), 20.0, color.RGBA{255, 0, 0, 255})
 }
