@@ -85,15 +85,6 @@ func GetFramesHeroKnight() (*Unit, error) {
 			break
 		}
 		file.Close()
-		// 	file, err = os.Open("_assets/EnvironmentTiles/Tile_" + strconv.Itoa(i) + ".png")
-		// 	if err != nil {
-		// 		break
-		// 	}
-		// 	cfg, err = png.DecodeConfig(file)
-		// 	if err != nil {
-		// 		break
-		// 	}
-		// 	file.Close()
 		frms = append(frms, ebiten.NewImageFromImage(img))
 	}
 	unit.ActionFrames["environment"] = frms
@@ -178,7 +169,7 @@ func (hk *HeroKnight) Stop() {
 	hk.IsRunning = false
 }
 
-func (hk *HeroKnight) Update(enemies map[string]*Bandit) error {
+func (hk *HeroKnight) Update(enemies map[string]*Enemy) error {
 	hk.Keyboard.Update()
 	hk.Death()
 	if hk.Keyboard[KeyAttack].IsKeyJustPressed {
@@ -324,22 +315,11 @@ func (hk *HeroKnight) Update(enemies map[string]*Bandit) error {
 	return nil
 }
 
-func (hk *HeroKnight) Draw(screen *ebiten.Image, unit *Unit) {
-
-	cameraX := hk.X - float64(640*Scale-300)/2
-
-	if cameraX < 0 {
-		cameraX = 0
-	}
-	if cameraX > 355 {
-		cameraX = 355
-	}
-	cameraY := hk.Y - float64(360*Scale)/2
+func (hk *HeroKnight) Draw(screen *ebiten.Image, unit *Unit, camera *Camera) {
 	for i := 0; i < 50; i++ {
 		op := &ebiten.DrawImageOptions{}
-
-		op.GeoM.Scale(1.0*2, 1.0*2)
-		op.GeoM.Translate(float64(TileSize*i*Scale)-cameraX, hk.Y-cameraY+106)
+		op.GeoM.Scale(1.0*float64(Scale), 1.0*float64(Scale))
+		op.GeoM.Translate(float64(TileSize*i*Scale)-camera.X, hk.Y-camera.MainCharacterY)
 		screen.DrawImage(unit.ActionFrames["environment"][1], op)
 	}
 	op := &ebiten.DrawImageOptions{}
@@ -347,12 +327,10 @@ func (hk *HeroKnight) Draw(screen *ebiten.Image, unit *Unit) {
 	if hk.Side < 0 {
 		op.GeoM.Translate(unit.Width*2, 0.0)
 	}
-	// op.GeoM.Translate(hk.X, float64(TileSize*2)*9-hk.Frames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration].Height*2-hk.Y)
-	op.GeoM.Translate(hk.X-cameraX, -hk.Y-cameraY)
+	op.GeoM.Translate(hk.X-camera.X, -hk.Y-camera.MainCharacterY-unit.Height*float64(Scale))
 	screen.DrawImage(unit.ActionFrames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration], op)
-	w := unit.Width // - 35
 	if boxesShow {
-		ebitenutil.DrawRect(screen, hk.X, float64(TileSize)*9-unit.Height-hk.Y, w, unit.Height, color.RGBA{0, 0, 255, 100})
-		ebitenutil.DrawRect(screen, hk.X+35, float64(TileSize)*9-unit.Height-hk.Y, 30, unit.Height, color.RGBA{255, 0, 0, 100})
+		ebitenutil.DrawRect(screen, hk.X-camera.X, -hk.Y-camera.MainCharacterY-unit.Height*float64(Scale), unit.Width*float64(Scale), unit.Height*float64(Scale), color.RGBA{0, 0, 255, 100})
+		ebitenutil.DrawRect(screen, hk.X-camera.X+35*float64(Scale), -hk.Y-camera.MainCharacterY-unit.Height*float64(Scale), 30*float64(Scale), unit.Height*float64(Scale), color.RGBA{255, 0, 0, 100})
 	}
 }

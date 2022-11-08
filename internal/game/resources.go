@@ -1,6 +1,8 @@
 package game
 
-import "github.com/hajimehoshi/ebiten/v2"
+import (
+	"github.com/hajimehoshi/ebiten/v2"
+)
 
 const (
 	StatusAttack1       string = "Attack1"
@@ -39,11 +41,20 @@ type Unit struct {
 }
 
 const (
-	LightBandit string = "LightBandit"
-	HeavyBandit string = "HeavyBandit"
+	MainCharacter string = "HeroKnight"
+	LightBandit   string = "LightBandit"
+	HeavyBandit   string = "HeavyBandit"
+	Wizard        string = "Wizard"
 )
 
-var StatusFramesHeroKnight map[string]StatusData = map[string]StatusData{
+var StatusFrames = map[string]map[string]StatusData{
+	MainCharacter: StatusFramesHeroKnight,
+	LightBandit:   StatusFramesLightBandit,
+	HeavyBandit:   StatusFramesLightBandit,
+	Wizard:        StatusFramesWizard,
+}
+
+var StatusFramesHeroKnight = map[string]StatusData{
 	StatusAttack1: StatusData{
 		FramesNumber:  6,
 		FrameDuration: 4,
@@ -110,7 +121,7 @@ var StatusFramesHeroKnight map[string]StatusData = map[string]StatusData{
 	},
 }
 
-var StatusFramesLightBandit map[string]StatusData = map[string]StatusData{
+var StatusFramesLightBandit = map[string]StatusData{
 	StatusAttack: StatusData{
 		FramesNumber:  8,
 		FrameDuration: 4,
@@ -145,7 +156,7 @@ var StatusFramesLightBandit map[string]StatusData = map[string]StatusData{
 	},
 }
 
-var StatusFramesWizard map[string]StatusData = map[string]StatusData{
+var StatusFramesWizard = map[string]StatusData{
 	StatusAttack1: StatusData{
 		FramesNumber:  8,
 		FrameDuration: 4,
