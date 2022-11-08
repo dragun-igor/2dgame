@@ -55,137 +55,137 @@ var StatusFrames = map[string]map[string]StatusData{
 }
 
 var StatusFramesHeroKnight = map[string]StatusData{
-	StatusAttack1: StatusData{
+	StatusAttack1: {
 		FramesNumber:  6,
 		FrameDuration: 4,
 	},
-	StatusAttack2: StatusData{
+	StatusAttack2: {
 		FramesNumber:  6,
 		FrameDuration: 4,
 	},
-	StatusAttack3: StatusData{
+	StatusAttack3: {
 		FramesNumber:  8,
 		FrameDuration: 4,
 	},
-	StatusBlock: StatusData{
+	StatusBlock: {
 		FramesNumber:  5,
 		FrameDuration: 7,
 	},
-	StatusBlockIdle: StatusData{
+	StatusBlockIdle: {
 		FramesNumber:  8,
 		FrameDuration: 7,
 	},
-	StatusBlockNoEffect: StatusData{
+	StatusBlockNoEffect: {
 		FramesNumber:  5,
 		FrameDuration: 7,
 	},
-	StatusDeath: StatusData{
+	StatusDeath: {
 		FramesNumber:  10,
 		FrameDuration: 7,
 	},
-	StatusDeathNoBlood: StatusData{
+	StatusDeathNoBlood: {
 		FramesNumber:  10,
 		FrameDuration: 7,
 	},
-	StatusFall: StatusData{
+	StatusFall: {
 		FramesNumber:  4,
 		FrameDuration: 7,
 	},
-	StatusHurt: StatusData{
+	StatusHurt: {
 		FramesNumber:  3,
 		FrameDuration: 7,
 	},
-	StatusIdle: StatusData{
+	StatusIdle: {
 		FramesNumber:  8,
 		FrameDuration: 7,
 	},
-	StatusJump: StatusData{
+	StatusJump: {
 		FramesNumber:  3,
 		FrameDuration: 2,
 	},
-	StatusLedgeGrab: StatusData{
+	StatusLedgeGrab: {
 		FramesNumber:  5,
 		FrameDuration: 7,
 	},
-	StatusRoll: StatusData{
+	StatusRoll: {
 		FramesNumber:  9,
 		FrameDuration: 4,
 	},
-	StatusRun: StatusData{
+	StatusRun: {
 		FramesNumber:  10,
 		FrameDuration: 7,
 	},
-	StatusWallSide: StatusData{
+	StatusWallSide: {
 		FramesNumber:  5,
 		FrameDuration: 7,
 	},
 }
 
 var StatusFramesLightBandit = map[string]StatusData{
-	StatusAttack: StatusData{
+	StatusAttack: {
 		FramesNumber:  8,
 		FrameDuration: 4,
 	},
-	StatusCombatIdle: StatusData{
+	StatusCombatIdle: {
 		FramesNumber:  4,
 		FrameDuration: 7,
 	},
-	StatusDeath: StatusData{
+	StatusDeath: {
 		FramesNumber:  1,
 		FrameDuration: 4,
 	},
-	StatusHurt: StatusData{
+	StatusHurt: {
 		FramesNumber:  2,
 		FrameDuration: 7,
 	},
-	StatusIdle: StatusData{
+	StatusIdle: {
 		FramesNumber:  4,
 		FrameDuration: 7,
 	},
-	StatusJump: StatusData{
+	StatusJump: {
 		FramesNumber:  1,
 		FrameDuration: 7,
 	},
-	StatusRecover: StatusData{
+	StatusRecover: {
 		FramesNumber:  8,
 		FrameDuration: 7,
 	},
-	StatusRun: StatusData{
+	StatusRun: {
 		FramesNumber:  8,
 		FrameDuration: 7,
 	},
 }
 
 var StatusFramesWizard = map[string]StatusData{
-	StatusAttack1: StatusData{
+	StatusAttack1: {
 		FramesNumber:  8,
 		FrameDuration: 4,
 	},
-	StatusAttack2: StatusData{
+	StatusAttack2: {
 		FramesNumber:  8,
 		FrameDuration: 7,
 	},
-	StatusDeath: StatusData{
+	StatusDeath: {
 		FramesNumber:  7,
 		FrameDuration: 4,
 	},
-	StatusFall: StatusData{
+	StatusFall: {
 		FramesNumber:  2,
 		FrameDuration: 7,
 	},
-	StatusHurt: StatusData{
+	StatusHurt: {
 		FramesNumber:  4,
 		FrameDuration: 7,
 	},
-	StatusIdle: StatusData{
+	StatusIdle: {
 		FramesNumber:  6,
 		FrameDuration: 7,
 	},
-	StatusJump: StatusData{
+	StatusJump: {
 		FramesNumber:  2,
 		FrameDuration: 7,
 	},
-	StatusRun: StatusData{
+	StatusRun: {
 		FramesNumber:  8,
 		FrameDuration: 7,
 	},

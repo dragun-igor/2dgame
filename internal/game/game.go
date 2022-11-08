@@ -40,16 +40,11 @@ func (c *Camera) RefreshOffset(x, y float64) {
 var boxesShow bool
 var onceBody = func(e *Enemy) {
 	time.Sleep(time.Millisecond * time.Duration(rand.Intn(1000)))
-	ticker := time.NewTicker(time.Millisecond * 700)
-LOOP:
-	for {
-		select {
-		case <-ticker.C:
-			if !e.IsDead {
-				e.AttackAction = !e.AttackAction
-			} else {
-				break LOOP
-			}
+	for range time.NewTicker(time.Millisecond * 700).C {
+		if !e.IsDead {
+			e.AttackAction = !e.AttackAction
+		} else {
+			break
 		}
 	}
 }

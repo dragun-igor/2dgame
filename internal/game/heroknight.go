@@ -273,10 +273,10 @@ func (hk *HeroKnight) Update(enemies map[string]*Enemy) error {
 	for _, unit := range enemies {
 		if !hk.IsJumping && !hk.IsRolling && !unit.IsDead {
 			if hk.X+hk.Width-hk.Indent > unit.X+unit.Indent && hk.X+hk.Width-hk.Indent < unit.X+unit.Width-unit.Indent {
-				hk.X -= unit.SpeedRun / 1.5
+				hk.X -= unit.SpeedRun / 1.05
 			}
 			if hk.X+hk.Indent > unit.X+unit.Indent && hk.X+hk.Indent < unit.X+unit.Width-unit.Indent {
-				hk.X += unit.SpeedRun / 1.5
+				hk.X += unit.SpeedRun / 1.05
 			}
 		}
 		if hk.IsAttacking && hk.Frame == hk.LastFrame/2 {
