@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"image/png"
@@ -241,9 +242,12 @@ func (hk *HeroKnight) Update(enemies map[string]*Enemy, environment []Environmen
 		hk.Y += hk.SpeedJump
 		hk.SpeedJump -= hk.DecelerationJump
 		for _, env := range environment {
-			if env.Y-hk.Y < 5 && env.Y-hk.Y > -5 {
+			fmt.Println(env.Y)
+			fmt.Println(hk.Y)
+			fmt.Println(hk.Height)
+			if env.Y-(hk.Y+hk.Height) < 5 && env.Y-(hk.Y+hk.Height) > -5 {
 				hk.SpeedJump = hk.BaseSpeedJump
-				hk.Y = env.Y
+				hk.Y = env.Y + hk.Height
 				hk.IsJumping = false
 				hk.IsFalling = false
 			}
@@ -334,12 +338,6 @@ func (hk *HeroKnight) Update(enemies map[string]*Enemy, environment []Environmen
 }
 
 func (hk *HeroKnight) Draw(screen *ebiten.Image, unit *Unit, camera *Camera) {
-	// for i := 0; i < 50; i++ {
-	// 	op := &ebiten.DrawImageOptions{}
-	// 	op.GeoM.Scale(1.0*float64(Scale), 1.0*float64(Scale))
-	// 	op.GeoM.Translate(float64(TileSize*i*Scale)-camera.X, hk.Y-camera.MainCharacterY)
-	// 	screen.DrawImage(unit.ActionFrames["environment"][1], op)
-	// }
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Scale(hk.Side*hk.Scale*float64(Scale), hk.Scale*float64(Scale))
 	if hk.Side < 0 {
