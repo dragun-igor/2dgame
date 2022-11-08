@@ -1,7 +1,6 @@
 package game
 
 import (
-	"fmt"
 	"image"
 	"image/color"
 	"image/png"
@@ -20,7 +19,10 @@ type Enemy struct {
 	Type             string
 	X                float64
 	Y                float64
+	Width            float64
+	Height           float64
 	Scale            float64
+	Indent           float64
 	Side             float64
 	SpeedRun         float64
 	MaxSpeedRun      float64
@@ -44,84 +46,45 @@ type Enemy struct {
 	Once             sync.Once
 }
 
-func NewEnemy(t string) *Enemy {
-	var enemy *Enemy
-	switch t {
+func NewEnemy(enemyType string, x, y, width, height float64) *Enemy {
+	var scale float64
+	var indent float64
+	var maxSpeedRun float64
+	switch enemyType {
 	case LightBandit:
-		enemy = NewLightBandit()
+		scale = 1.0
+		indent = 12
+		maxSpeedRun = 3.0
 	case HeavyBandit:
-		enemy = NewHeavyBandit()
+		scale = 1.0
+		indent = 12
+		maxSpeedRun = 1.5
 	case Wizard:
-		enemy = NewWizard()
+		scale = 0.5
+		indent = 80
+		maxSpeedRun = 2.1
 	}
-	return enemy
-}
-
-func NewLightBandit() *Enemy {
 	return &Enemy{
 		Keyboard:         NewEmulationKeyboard(),
-		Type:             LightBandit,
-		X:                550,
-		Y:                0,
-		Scale:            1.0,
+		Type:             enemyType,
+		X:                x,
+		Y:                y,
+		Width:            width * scale * float64(Scale),
+		Height:           height * scale * float64(Scale),
+		Scale:            scale,
+		Indent:           indent * scale * float64(Scale),
 		Status:           StatusIdle,
 		PrevStatus:       StatusIdle,
 		Side:             1.0,
 		SpeedRun:         1.0,
-		MaxSpeedRun:      2.0,
+		MaxSpeedRun:      maxSpeedRun,
 		BaseSpeedRun:     1.0,
 		AccelerationRun:  0.2,
 		SpeedJump:        6.0,
 		BaseSpeedJump:    6.0,
 		DecelerationJump: 0.2,
 		Health:           100,
-		LastFrame:        StatusFrames[LightBandit][StatusIdle].FramesNumber*StatusFrames[LightBandit][StatusIdle].FrameDuration - 1,
-		Direction:        DirectionLeft,
-	}
-}
-
-func NewHeavyBandit() *Enemy {
-	return &Enemy{
-		Keyboard:         NewEmulationKeyboard(),
-		Type:             HeavyBandit,
-		X:                300,
-		Y:                0,
-		Scale:            1.0,
-		Status:           StatusIdle,
-		PrevStatus:       StatusIdle,
-		Side:             1.0,
-		SpeedRun:         1.0,
-		MaxSpeedRun:      2.0,
-		BaseSpeedRun:     1.0,
-		AccelerationRun:  0.2,
-		SpeedJump:        6.0,
-		BaseSpeedJump:    6.0,
-		DecelerationJump: 0.2,
-		Health:           100,
-		LastFrame:        StatusFrames[HeavyBandit][StatusIdle].FramesNumber*StatusFrames[HeavyBandit][StatusIdle].FrameDuration - 1,
-		Direction:        DirectionLeft,
-	}
-}
-
-func NewWizard() *Enemy {
-	return &Enemy{
-		Keyboard:         NewEmulationKeyboard(),
-		Type:             Wizard,
-		X:                250,
-		Y:                0,
-		Scale:            0.5,
-		Status:           StatusIdle,
-		PrevStatus:       StatusIdle,
-		Side:             1.0,
-		SpeedRun:         1.0,
-		MaxSpeedRun:      2.0,
-		BaseSpeedRun:     1.0,
-		AccelerationRun:  0.2,
-		SpeedJump:        6.0,
-		BaseSpeedJump:    6.0,
-		DecelerationJump: 0.2,
-		Health:           100,
-		LastFrame:        StatusFrames[Wizard][StatusIdle].FramesNumber*StatusFrames[Wizard][StatusIdle].FrameDuration - 1,
+		LastFrame:        StatusFrames[enemyType][StatusIdle].FramesNumber*StatusFrames[enemyType][StatusIdle].FrameDuration - 1,
 		Direction:        DirectionLeft,
 	}
 }
@@ -286,10 +249,10 @@ func (e *Enemy) Update(heroKnight *HeroKnight) error {
 	}
 
 	if (e.Status == StatusAttack || e.Status == StatusAttack1) && e.Frame == e.LastFrame/2 {
-		if e.Side < 0 && ((e.X+float64(36*Scale))-(heroKnight.X+float64(35*Scale))) < float64(12*Scale) && ((e.X+float64(36*Scale))-(heroKnight.X+float64(35*Scale))) > -float64(12*Scale) {
+		if e.Side > 0 && ((e.X+e.Width-e.Indent)-(heroKnight.X+heroKnight.Indent)) < e.Indent && ((e.X+e.Width-e.Indent)-(heroKnight.X+heroKnight.Indent)) > -e.Indent {
 			heroKnight.Hurt()
 		}
-		if e.Side > 0 && ((heroKnight.X+float64(65*Scale))-(e.X+float64(12*Scale))) < float64(12*Scale) && ((heroKnight.X+float64(65*Scale))-(e.X+float64(12*Scale))) > -float64(12*Scale) {
+		if e.Side < 0 && ((heroKnight.X+heroKnight.Width-heroKnight.Indent)-(e.X+e.Indent)) < e.Indent && ((heroKnight.X+heroKnight.Width-heroKnight.Indent)-(e.X+e.Indent)) > -e.Indent {
 			heroKnight.Hurt()
 		}
 	}
@@ -308,9 +271,6 @@ func (e *Enemy) Update(heroKnight *HeroKnight) error {
 	}
 
 	e.PrevStatus = e.Status
-	if e.Type == Wizard {
-		fmt.Println(*e)
-	}
 
 	return nil
 }
@@ -326,7 +286,7 @@ func (e *Enemy) Draw(screen *ebiten.Image, unit *Unit, camera *Camera) {
 	op.GeoM.Translate(offsetX, offsetY)
 	screen.DrawImage(unit.ActionFrames[e.Status][e.Frame/StatusFrames[e.Type][e.Status].FrameDuration], op)
 	if boxesShow {
-		ebitenutil.DrawRect(screen, offsetX, offsetY, unit.Width*float64(Scale)*e.Scale, unit.Height*float64(Scale)*e.Scale, color.RGBA{0, 0, 255, 100})
-		ebitenutil.DrawRect(screen, offsetX+12*float64(Scale)*e.Scale, offsetY, 24*float64(Scale)*e.Scale, unit.Height*float64(Scale)*e.Scale, color.RGBA{255, 0, 0, 100})
+		ebitenutil.DrawRect(screen, offsetX, offsetY, e.Width, e.Height, color.RGBA{0, 0, 255, 100})
+		ebitenutil.DrawRect(screen, offsetX+e.Indent, offsetY, e.Width-e.Indent*2, e.Height, color.RGBA{255, 0, 0, 100})
 	}
 }

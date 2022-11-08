@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"image/color"
 	"math/rand"
 	"sort"
 	"time"
@@ -55,37 +56,39 @@ LOOP:
 
 func NewGame() (*Game, error) {
 	frames := make(map[string]*Unit)
+	enemies := make(map[string]*Enemy)
+	var hk *HeroKnight
 	if unit, err := GetFramesHeroKnight(); err != nil {
 		return nil, err
 	} else {
 		frames[MainCharacter] = unit
+		hk = NewHeroKnight(30.0, 0.0, unit.Width, unit.Height)
 	}
 	if unit, err := GetFramesBandit(LightBandit); err != nil {
 		return nil, err
 	} else {
 		frames[LightBandit] = unit
+		enemies[LightBandit] = NewEnemy(LightBandit, 400.0, 0.0, unit.Width, unit.Height)
 	}
 	if unit, err := GetFramesBandit(HeavyBandit); err != nil {
 		return nil, err
 	} else {
 		frames[HeavyBandit] = unit
+		enemies[HeavyBandit] = NewEnemy(HeavyBandit, 350.0, 0.0, unit.Width, unit.Height)
 	}
 	if unit, err := GetFramesWizard(); err != nil {
 		return nil, err
 	} else {
 		frames[Wizard] = unit
+		enemies[Wizard] = NewEnemy(Wizard, 450.0, 0.0, unit.Width, unit.Height)
 	}
 
-	enemies := make(map[string]*Enemy)
-	enemies[HeavyBandit] = NewHeavyBandit()
-	enemies[LightBandit] = NewLightBandit()
-	enemies[Wizard] = NewWizard()
 	game := &Game{
 		Camera: &Camera{
 			EnemyY: -(360 * float64(Scale)) / 2,
 		},
 		Frames:  frames,
-		hk:      NewHeroKnight(),
+		hk:      hk,
 		enemies: enemies,
 	}
 
@@ -100,8 +103,8 @@ func (g *Game) Update() error {
 
 	for _, enemy := range g.enemies {
 		if !enemy.IsDead {
-			enemy.RunLeftAction = (enemy.X+float64(12*Scale))-(g.hk.X+float64(65*Scale)) > 2
-			enemy.RunRightAction = (g.hk.X+float64(35*Scale))-(enemy.X+float64(36*Scale)) > 2
+			enemy.RunLeftAction = (enemy.X+enemy.Indent)-(g.hk.X+g.hk.Width-g.hk.Indent) > 2
+			enemy.RunRightAction = (g.hk.X+g.hk.Indent)-(enemy.X+enemy.Width-enemy.Indent) > 2
 		}
 
 		go func(enemy *Enemy) {
@@ -109,10 +112,6 @@ func (g *Game) Update() error {
 				onceBody(enemy)
 			})
 		}(enemy)
-		if enemy.Type == Wizard {
-			fmt.Println(enemy.Frame)
-			fmt.Println(enemy.LastFrame)
-		}
 		if !enemy.IsDead || enemy.Frame != enemy.LastFrame {
 			enemy.Update(g.hk)
 		}
@@ -143,4 +142,6 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 	g.hk.Draw(screen, g.Frames[MainCharacter], g.Camera)
 	ebitenutil.DebugPrint(screen, fmt.Sprintf("FPS: %.2f\nTPS: %.2f", ebiten.ActualFPS(), ebiten.ActualTPS()))
+	ebitenutil.DrawRect(screen, 9.0, 49.0, 100.0+2.0, 20.0+2.0, color.RGBA{255, 255, 255, 255})
+	ebitenutil.DrawRect(screen, 10.0, 50.0, float64(g.hk.Health), 20.0, color.RGBA{255, 0, 0, 255})
 }

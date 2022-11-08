@@ -17,6 +17,10 @@ type HeroKnight struct {
 	PrevStatus       string
 	X                float64
 	Y                float64
+	Width            float64
+	Height           float64
+	Indent           float64
+	Scale            float64
 	Side             float64
 	SpeedRun         float64
 	MaxSpeedRun      float64
@@ -92,12 +96,17 @@ func GetFramesHeroKnight() (*Unit, error) {
 	return unit, err
 }
 
-func NewHeroKnight() *HeroKnight {
+func NewHeroKnight(x, y, width, height float64) *HeroKnight {
 	baseSpeedRun := 3.0
 	baseSpeedJump := 5.0
 	return &HeroKnight{
 		Keyboard:         NewDefaultKeyboard(),
-		X:                50,
+		X:                x,
+		Y:                y,
+		Width:            width * float64(Scale),
+		Height:           height * float64(Scale),
+		Scale:            1.0,
+		Indent:           35.0 * float64(Scale),
 		Status:           StatusIdle,
 		Side:             1.0,
 		AttackType:       AttackType1,
@@ -125,7 +134,7 @@ func (hk *HeroKnight) Death() {
 func (hk *HeroKnight) Hurt() {
 	if !hk.IsHurted {
 		hk.IsHurted = true
-		hk.Health -= 50
+		hk.Health -= 20
 	}
 }
 
@@ -263,18 +272,18 @@ func (hk *HeroKnight) Update(enemies map[string]*Enemy) error {
 
 	for _, unit := range enemies {
 		if !hk.IsJumping && !hk.IsRolling && !unit.IsDead {
-			if hk.X+float64(65*Scale) > unit.X+float64(12*Scale) && hk.X+float64(65*Scale) < unit.X+float64(36*Scale) {
+			if hk.X+hk.Width-hk.Indent > unit.X+unit.Indent && hk.X+hk.Width-hk.Indent < unit.X+unit.Width-unit.Indent {
 				hk.X -= unit.SpeedRun / 1.5
 			}
-			if hk.X+float64(35*Scale) > unit.X+float64(12*Scale) && hk.X+float64(35*Scale) < unit.X+float64(36*Scale) {
+			if hk.X+hk.Indent > unit.X+unit.Indent && hk.X+hk.Indent < unit.X+unit.Width-unit.Indent {
 				hk.X += unit.SpeedRun / 1.5
 			}
 		}
 		if hk.IsAttacking && hk.Frame == hk.LastFrame/2 {
-			if hk.Side > 0 && ((hk.X+float64(65*Scale))-(unit.X+float64(12*Scale))) < float64(35*Scale) && ((hk.X+float64(65*Scale))-(unit.X+float64(12*Scale))) > -float64(35*Scale) {
+			if hk.Side > 0 && ((hk.X+hk.Width-hk.Indent)-(unit.X+unit.Indent)) < hk.Indent && ((hk.X+hk.Width-hk.Indent)-(unit.X+unit.Indent)) > -hk.Indent {
 				unit.Hurt()
 			}
-			if hk.Side < 0 && ((unit.X+float64(36*Scale))-(hk.X+float64(35*Scale))) < float64(35*Scale) && ((unit.X+float64(36*Scale))-(hk.X+float64(35*Scale))) > -float64(35*Scale) {
+			if hk.Side < 0 && ((unit.X+unit.Width-unit.Indent)-(hk.X+hk.Indent)) < hk.Indent && ((unit.X+unit.Width-unit.Indent)-(hk.X+hk.Indent)) > -hk.Indent {
 				unit.Hurt()
 			}
 		}
@@ -323,14 +332,14 @@ func (hk *HeroKnight) Draw(screen *ebiten.Image, unit *Unit, camera *Camera) {
 		screen.DrawImage(unit.ActionFrames["environment"][1], op)
 	}
 	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Scale(hk.Side*2, 1.0*2)
+	op.GeoM.Scale(hk.Side*hk.Scale*float64(Scale), hk.Scale*float64(Scale))
 	if hk.Side < 0 {
-		op.GeoM.Translate(unit.Width*2, 0.0)
+		op.GeoM.Translate(hk.Width, 0.0)
 	}
-	op.GeoM.Translate(hk.X-camera.X, -hk.Y-camera.MainCharacterY-unit.Height*float64(Scale))
+	op.GeoM.Translate(hk.X-camera.X, -hk.Y-camera.MainCharacterY-hk.Height)
 	screen.DrawImage(unit.ActionFrames[hk.Status][hk.Frame/StatusFramesHeroKnight[hk.Status].FrameDuration], op)
 	if boxesShow {
-		ebitenutil.DrawRect(screen, hk.X-camera.X, -hk.Y-camera.MainCharacterY-unit.Height*float64(Scale), unit.Width*float64(Scale), unit.Height*float64(Scale), color.RGBA{0, 0, 255, 100})
-		ebitenutil.DrawRect(screen, hk.X-camera.X+35*float64(Scale), -hk.Y-camera.MainCharacterY-unit.Height*float64(Scale), 30*float64(Scale), unit.Height*float64(Scale), color.RGBA{255, 0, 0, 100})
+		ebitenutil.DrawRect(screen, hk.X-camera.X, -hk.Y-camera.MainCharacterY-hk.Height, hk.Width, hk.Height, color.RGBA{0, 0, 255, 100})
+		ebitenutil.DrawRect(screen, hk.X-camera.X+hk.Indent, -hk.Y-camera.MainCharacterY-hk.Height, hk.Width-2*hk.Indent, hk.Height, color.RGBA{255, 0, 0, 100})
 	}
 }
